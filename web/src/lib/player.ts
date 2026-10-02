@@ -50,6 +50,7 @@ class SongerPlayer {
   private listeners = new Set<() => void>();
   private stateWaiters = new Set<(s: SdkState) => void>();
   private primedUri: string | null = null;
+  private primeLock: Promise<void> = Promise.resolve();
   private volume = 0.8;
   private clipTimer = 0;
   private clipSeq = 0;
@@ -92,15 +93,22 @@ class SongerPlayer {
         p.addListener('initialization_error', bad('This browser can\'t play Spotify. Use Chrome, Edge or Firefox on a computer.'));
         p.addListener('authentication_error', bad('Spotify rejected the sign-in. Sign out and sign in again.'));
         p.addListener('account_error', bad('Playing songs needs Spotify Premium on the signed-in account.'));
-        p.addListener('playback_error', (() => this.fail('Spotify couldn\'t play that song. Try the next one.')) as never);
-        p.addListener('ready', (({ device_id }: { device_id: string }) => {
+        // Spotify fires playback_error for transient hiccups (e.g. while a track is still loading) and then recovers.
+        // Real failures surface as a rejected playClip(), so this only logs.
+        p.addListener('playback_error', ((e: { message?: string }) => console.warn('Spotify playback_error:', e?.message)) as never);
+        p.addListener('ready', (async ({ device_id }: { device_id: string }) => {
           this.deviceId = device_id;
+          this.primedUri = null;
+          // Make this tab the active Spotify device before we report ready; otherwise the first
+          // "play on device X" calls come back 404 "Device not found" for a few seconds.
+          await this.activateDevice().catch((e) => console.warn('Could not activate the Songer device yet:', e));
           this.status = 'ready';
           this.error = null;
           this.emit();
           resolve();
         }) as never);
         p.addListener('not_ready', (() => {
+          this.primedUri = null;
           this.deviceId = null;
           this.status = 'loading';
           this.emit();
@@ -170,37 +178,64 @@ class SongerPlayer {
     return !!t && (t.uri === uri || t.linked_from?.uri === uri);
   }
 
-  /** Start the track silently on this device, then pause and rewind it to 0:00. */
-  private async prime(uri: string) {
+  private async webApi(method: string, path: string, body?: unknown): Promise<Response> {
+    const { accessToken } = await api.token();
+    return fetch(`https://api.spotify.com/v1${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  }
+
+  /** Transfer playback to this tab and wait until Spotify's servers list it as a device. */
+  private async activateDevice() {
+    if (!this.deviceId) return;
+    await this.webApi('PUT', '/me/player', { device_ids: [this.deviceId], play: false });
+    for (let i = 0; i < 20; i++) {
+      const res = await this.webApi('GET', '/me/player/devices');
+      if (res.ok) {
+        const { devices } = (await res.json()) as { devices: { id: string }[] };
+        if (devices.some((d) => d.id === this.deviceId)) return;
+      }
+      await sleep(200);
+    }
+  }
+
+  /** Start the track silently on this device, then pause and rewind it to 0:00. Calls run one at a time. */
+  private prime(uri: string): Promise<void> {
+    const run = this.primeLock.catch(() => {}).then(() => this.primeNow(uri));
+    this.primeLock = run;
+    return run;
+  }
+
+  private async primeNow(uri: string) {
     if (this.primedUri === uri) return;
     await this.init();
     const p = this.player!;
     await p.setVolume(0);
-    let lastErr = '';
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const { accessToken } = await api.token();
-      const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${this.deviceId}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uris: [uri], position_ms: 0 }),
-      });
-      if (res.ok || res.status === 204) {
-        lastErr = '';
-        break;
+    try {
+      let lastErr = '';
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const res = await this.webApi('PUT', `/me/player/play?device_id=${this.deviceId}`, { uris: [uri], position_ms: 0 });
+        if (res.ok) {
+          lastErr = '';
+          break;
+        }
+        lastErr = `Spotify refused to start playback (${res.status}).`;
+        if (res.status === 404) await this.activateDevice(); // "Device not found": re-register this tab, then retry at once
+        else if (res.status === 429) await sleep(Math.min(Number(res.headers.get('retry-after') || 1), 5) * 1000);
+        else if (res.status >= 500) await sleep(400);
+        else break; // 401/403 and friends won't fix themselves
       }
-      lastErr = `Spotify refused to start playback (${res.status}).`;
-      await sleep(600 * (attempt + 1)); // a fresh device is sometimes "not found" for a moment
-    }
-    if (lastErr) {
+      if (lastErr) throw new Error(lastErr);
+      await this.waitForState((s) => SongerPlayer.isTrack(s, uri) && !s.paused, 6000);
+      await p.pause();
+      await p.seek(0);
+      await this.waitForState((s) => SongerPlayer.isTrack(s, uri) && s.paused, 1500);
+      this.primedUri = uri;
+    } finally {
       await p.setVolume(this.volume);
-      throw new Error(lastErr);
     }
-    await this.waitForState((s) => SongerPlayer.isTrack(s, uri) && !s.paused, 6000);
-    await p.pause();
-    await p.seek(0);
-    await this.waitForState((s) => SongerPlayer.isTrack(s, uri) && s.paused, 1500);
-    await p.setVolume(this.volume);
-    this.primedUri = uri;
   }
 
   /** Get the next song ready ahead of time (silent). */

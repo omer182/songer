@@ -8,6 +8,7 @@ import { Home } from './pages/Home';
 import { Solo } from './pages/Solo';
 import { PartyHost } from './pages/PartyHost';
 import { Join } from './pages/Join';
+import { Remote } from './pages/Remote';
 import './styles.css';
 
 const MeContext = createContext<{ me: Me; signOut: () => void } | null>(null);
@@ -39,6 +40,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/join/:code?" element={<Join />} />
         <Route path="/solo" element={<Authed><Solo /></Authed>} />
         <Route path="/party" element={<Authed><PartyHost /></Authed>} />
+        <Route path="/remote" element={<Authed><Remote /></Authed>} />
         <Route path="*" element={<Authed><Home /></Authed>} />
       </Routes>
     </BrowserRouter>

@@ -9,6 +9,9 @@ import { getSocket, request } from '../lib/socket';
 import { useKeys, usePlayerStatus } from '../lib/hooks';
 import { Art, ClipBar, Eq } from '../components/bits';
 import { SourcePicker } from '../components/SourcePicker';
+import { RemoteQrButton } from '../components/RemoteQr';
+import { usePartySounds } from '../lib/partySounds';
+import { unlockSfx } from '../lib/sfx';
 import { TopBar } from './Home';
 
 const COLORS = ['#3fd8ff', '#ff3d7f', '#ffd23f', '#4ade9b'];
@@ -26,6 +29,7 @@ export function PartyHost() {
   const [qr, setQr] = useState<string | null>(null);
   const tvRef = useRef<HTMLDivElement>(null);
   usePlayerStatus();
+  usePartySounds(state);
 
   // Socket wiring: state updates and audio cues for this screen.
   useEffect(() => {
@@ -65,6 +69,7 @@ export function PartyHost() {
   const act = (action: HostAction) => {
     if (!state) return;
     player.activate();
+    unlockSfx();
     setError(null);
     getSocket().emit('host:action', { code: state.code, action });
   };
@@ -72,6 +77,7 @@ export function PartyHost() {
   async function openLobby() {
     if (!source) return;
     player.activate();
+    unlockSfx();
     setBusy(true);
     setError(null);
     try {
@@ -158,6 +164,10 @@ export function PartyHost() {
           <button className="btn lg" disabled={!source || busy} onClick={openLobby}>
             {busy ? <><span className="spin" /> Getting songs and the player ready…</> : 'Open lobby on TV'}
           </button>
+          <div className="row wrap">
+            <RemoteQrButton className="btn ghost" />
+            <span className="muted small">Sign your phone in as the host remote: it shows each answer privately so you can judge.</span>
+          </div>
           <div className="tip">
             Connect this computer to the TV and turn on a <b>Private Session</b> in Spotify so the party doesn't change your recommendations. Keep the Spotify app on your phone closed; it shows the song name.
           </div>
@@ -325,6 +335,7 @@ export function PartyHost() {
             <span className="grow" />
             {error && <span className="small" style={{ color: 'var(--red)' }}>{error}</span>}
             {player.status === 'error' && <span className="small" style={{ color: 'var(--red)' }}>{player.error}</span>}
+            <RemoteQrButton />
             <button className="btn ghost sm" onClick={fullscreen}>Fullscreen <span className="kbd">F</span></button>
             <button className="btn ghost sm" onClick={endParty}>End party</button>
           </div>

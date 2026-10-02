@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { PartyState } from '../../../shared/types';
 import { getSocket, request } from '../lib/socket';
 import { Art } from '../components/bits';
+import { usePartySounds } from '../lib/partySounds';
+import { unlockSfx } from '../lib/sfx';
 
 // The phone side of a party: pick a name and team, then the screen is one big buzzer.
 // No account; we remember the player in localStorage so a refresh or a dropped connection rejoins.
@@ -34,6 +36,7 @@ export function Join() {
   const [ended, setEnded] = useState(false);
   const meRef = useRef<Saved | null>(null);
   meRef.current = me;
+  usePartySounds(state, { onlyTeamId: me?.teamId ?? '-' }); // your own team's buzz / right / wrong
 
   const join = useCallback(
     (who: { name: string; teamId: string; playerId?: string }) =>
@@ -137,6 +140,7 @@ export function Join() {
 
   /* ----- in the game ----- */
   const buzz = () => {
+    unlockSfx();
     navigator.vibrate?.(80);
     getSocket().emit('player:buzz');
   };

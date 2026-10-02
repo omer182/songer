@@ -180,6 +180,10 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .host { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .host .lbl { font: 700 11px var(--mono); letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-right: 4px; }
 
+/* ---------- modal ---------- */
+.modal { position: fixed; inset: 0; background: #07051ad9; display: grid; place-items: center; z-index: 50; padding: 16px; }
+.modal-card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 20px; width: min(400px, 100%); display: grid; gap: 14px; animation: pop 0.25s; }
+
 /* ---------- phone (join) ---------- */
 .phone { max-width: 440px; margin: 0 auto; min-height: calc(100dvh - 40px); display: flex; flex-direction: column; gap: 14px; text-align: center; }
 .phone .hd { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; }

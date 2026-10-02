@@ -63,6 +63,8 @@ setInterval(() => {
 export function attachParty(io: Server) {
   const hostChannel = (code: string) => `host:${code}`;
   const playerChannel = (code: string) => `players:${code}`;
+  // Host remotes see what the TV sees (including the answer) but don't get audio cues.
+  const remoteChannel = (code: string) => `remote:${code}`;
 
   function stateFor(r: Room, forHost: boolean): PartyState {
     const song = r.tracks[r.songIndex] ?? null;
@@ -91,7 +93,7 @@ export function attachParty(io: Server) {
 
   function broadcast(r: Room) {
     r.touchedAt = Date.now();
-    io.to(hostChannel(r.code)).emit('party:state', stateFor(r, true));
+    io.to(hostChannel(r.code)).to(remoteChannel(r.code)).emit('party:state', stateFor(r, true));
     io.to(playerChannel(r.code)).emit('party:state', stateFor(r, false));
   }
 
@@ -171,7 +173,7 @@ export function attachParty(io: Server) {
         return beginRound(r);
       case 'end':
         cue(r, { kind: 'stop' });
-        io.to(playerChannel(r.code)).emit('party:ended');
+        io.to(playerChannel(r.code)).to(remoteChannel(r.code)).emit('party:ended');
         rooms.delete(r.code);
         return;
     }
@@ -179,6 +181,7 @@ export function attachParty(io: Server) {
 
   io.on('connection', (socket: Socket) => {
     const userId = userIdFromCookieHeader(socket.handshake.headers.cookie);
+    if (userId) socket.join(`user:${userId}`); // lets a host's phone remote follow new parties
 
     /* ----- host (the laptop on the TV; must be signed in) ----- */
 
@@ -208,6 +211,7 @@ export function attachParty(io: Server) {
       };
       rooms.set(r.code, r);
       socket.join(hostChannel(r.code));
+      io.to(`user:${userId}`).emit('party:new');
       ack({ ok: true, data: stateFor(r, true) });
     });
 
@@ -215,6 +219,15 @@ export function attachParty(io: Server) {
       const r = rooms.get(clean(p?.code, 4).toUpperCase());
       if (!r || r.hostUserId !== userId) return ack({ ok: false, error: 'That party has ended.' });
       socket.join(hostChannel(r.code));
+      ack({ ok: true, data: stateFor(r, true) });
+    });
+
+    /** The host's phone remote: find this host's running party without knowing the code. */
+    socket.on('host:current', (_p: unknown, ack: Ack<PartyState | null>) => {
+      if (!userId) return ack({ ok: false, error: 'Sign in first.' });
+      const r = [...rooms.values()].find((x) => x.hostUserId === userId);
+      if (!r) return ack({ ok: true, data: null });
+      socket.join(remoteChannel(r.code));
       ack({ ok: true, data: stateFor(r, true) });
     });
 

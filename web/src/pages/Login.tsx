@@ -23,6 +23,11 @@ export function Login() {
           Name the song from its first half-second. Your music comes from your Spotify: top tracks, liked songs, any band or playlist.
         </p>
         {error && <div className="err">{error}</div>}
+        {window.location.pathname === '/remote' && (
+          <div className="tip">
+            Using your phone as the host remote? On the laptop, open <b>Party</b> and tap <b>📱 Host remote</b>, then scan that QR code with this phone.
+          </div>
+        )}
         {cfg && !cfg.spotifyConfigured ? (
           <div className="tip" style={{ textAlign: 'left' }}>
             <b style={{ color: 'var(--fg)' }}>Spotify isn't set up yet.</b> Create an app at developer.spotify.com/dashboard, add the redirect URI{' '}

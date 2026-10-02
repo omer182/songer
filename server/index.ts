@@ -65,6 +65,30 @@ app.get(
   }),
 );
 
+/* ---------- phone pairing: sign a phone in as you by scanning a QR on the signed-in laptop ---------- */
+// Spotify sign-in only works at the registered address (127.0.0.1 in dev), so phones get a one-time link instead.
+
+const pairTokens = new Map<string, { userId: string; expires: number }>();
+
+app.post('/api/pair', requireUser, (req, res) => {
+  const now = Date.now();
+  for (const [t, v] of pairTokens) if (v.expires < now) pairTokens.delete(t);
+  const token = crypto.randomBytes(18).toString('base64url');
+  pairTokens.set(token, { userId: req.userId!, expires: now + 5 * 60_000 });
+  res.json({ url: `${config.joinBaseUrl}/api/pair/${token}`, expiresInSec: 300 });
+});
+
+app.get('/api/pair/:token', (req, res) => {
+  const p = pairTokens.get(req.params.token);
+  pairTokens.delete(req.params.token); // single use
+  if (!p || p.expires < Date.now()) {
+    res.status(410).send('This link expired or was already used. Make a new one on the laptop.');
+    return;
+  }
+  createSession(res, p.userId);
+  res.redirect('/remote');
+});
+
 app.post('/api/auth/logout', (req, res) => {
   destroySession(req, res);
   res.json({ ok: true });

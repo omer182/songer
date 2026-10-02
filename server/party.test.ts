@@ -145,6 +145,15 @@ describe('party', () => {
     const again = await ask<{ playerId: string }>(p1b, 'player:join', { code, name: 'Noa', teamId: 't1', playerId: j1.data!.playerId });
     expect(again.data!.playerId).toBe(j1.data!.playerId);
 
+    // the host's phone remote finds the party, sees the answer, and can run it
+    const remote = await client(hostCookie);
+    const cur = await ask<PartyState>(remote, 'host:current', {});
+    expect(cur.data?.code).toBe(code);
+    const remoteRound = nextState(remote, (s) => s.phase === 'round');
+    remote.emit('host:action', { code, action: { type: 'rematch' } });
+    expect((await remoteRound).song?.title).toBeTruthy(); // remotes get the answer, phones don't
+    expect(cues.at(-1)).toMatchObject({ kind: 'clip', ms: 500 }); // audio still goes to the TV only
+
     // end
     const ended = new Promise((r) => p2.once('party:ended', r));
     host.emit('host:action', { code, action: { type: 'end' } });

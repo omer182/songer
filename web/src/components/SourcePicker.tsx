@@ -41,12 +41,13 @@ export function SourcePicker({ value, onChange, likedCount }: { value: Source | 
   }, [tab]);
 
   useEffect(() => {
-    if (dq.length < 2 || (tab !== 'artist' && tab !== 'playlist')) {
+    if (dq.length < 2 || tab !== 'artist') {
       setFound(null);
       return;
     }
     let live = true;
-    (tab === 'artist' ? api.searchArtists(dq) : api.searchPlaylists(dq))
+    api
+      .searchArtists(dq)
       .then((r) => live && setFound(r))
       .catch((e) => live && setErr(e.message));
     return () => {
@@ -54,7 +55,9 @@ export function SourcePicker({ value, onChange, likedCount }: { value: Source | 
     };
   }, [dq, tab]);
 
-  const list = (found ?? (tab === 'artist' ? mine.artist : tab === 'playlist' ? mine.playlist : null)) || [];
+  // Playlists: Spotify only shares songs from your own, so the box filters that list instead of searching Spotify.
+  const ownFiltered = (mine.playlist ?? []).filter((p) => !q.trim() || p.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const list = (tab === 'artist' ? (found ?? mine.artist) : tab === 'playlist' ? (mine.playlist ? ownFiltered : undefined) : null) || [];
   const selectedId = value && 'id' in value ? value.id : null;
 
   return (
@@ -88,15 +91,17 @@ export function SourcePicker({ value, onChange, likedCount }: { value: Source | 
             className="field"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder={tab === 'artist' ? 'Search any band or artist…' : 'Search public playlists, e.g. "israeli 80s"…'}
+            placeholder={tab === 'artist' ? 'Search any band or artist…' : 'Filter your playlists…'}
             dir="auto"
           />
           <span className="muted small">
-            {found ? 'Search results' : tab === 'artist' ? 'Artists you play and follow' : 'Your playlists'}
+            {found ? 'Search results' : tab === 'artist' ? 'Artists you play and follow' : "Your playlists. Spotify doesn't share other people's playlists with personal apps; to play one, add its songs to a playlist of yours."}
           </span>
           {err && <div className="err">{err}</div>}
           <div className="optlist">
-            {list.length === 0 && !err && <span className="muted small">{found ? 'Nothing found.' : 'Loading…'}</span>}
+            {list.length === 0 && !err && (
+              <span className="muted small">{found || (tab === 'playlist' && mine.playlist) ? 'Nothing found.' : 'Loading…'}</span>
+            )}
             {list.map((x) => (
               <button
                 key={x.id}

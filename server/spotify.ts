@@ -128,7 +128,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function api<T>(userId: string, pathOrUrl: string, attempt = 0): Promise<T> {
   const { token } = await accessToken(userId);
   const url = pathOrUrl.startsWith('http') ? pathOrUrl : `${API}${pathOrUrl}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  // Hebrew first: Israeli artists come back as "אייל לוי" instead of "Eyal Levi"; international names are unaffected.
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, 'Accept-Language': 'he, en;q=0.8' } });
   if (res.status === 429 && attempt < 5) {
     const wait = Number(res.headers.get('retry-after') || 1);
     await sleep(Math.min(wait, 30) * 1000 + 250);
@@ -202,6 +203,7 @@ export function toTrack(t: SpTrack | null | undefined, album?: SpAlbumLite): Tra
     uri: t.uri,
     title: t.name,
     artists: t.artists.map((a) => a.name).join(', '),
+    artistIds: t.artists.map((a) => a.id),
     album: al?.name ?? '',
     year,
     image: pickImage(al?.images),

@@ -36,7 +36,6 @@ export const api = {
   playlists: () => call<PlaylistInfo[]>('/api/library/playlists'),
   artists: () => call<ArtistInfo[]>('/api/library/artists'),
   searchArtists: (q: string) => call<ArtistInfo[]>(`/api/search/artists?q=${encodeURIComponent(q)}`),
-  searchPlaylists: (q: string) => call<PlaylistInfo[]>(`/api/search/playlists?q=${encodeURIComponent(q)}`),
   searchSongs: (q: string, signal?: AbortSignal) => call<Suggestion[]>(`/api/search/songs?q=${encodeURIComponent(q)}`, { signal }),
   pool: (source: Source, count: number) => post<Track[]>('/api/pool', { source, count }),
   soloResult: (body: { label: string; score: number; maxScore: number; detail: unknown }) => post('/api/solo/result', body),

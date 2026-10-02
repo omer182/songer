@@ -13,8 +13,10 @@ export interface Track {
   id: string;
   uri: string;
   title: string;
-  /** Comma-separated artist names. */
+  /** Comma-separated artist names (Hebrew names for Israeli artists, as Spotify spells them in Hebrew). */
   artists: string;
+  /** Spotify artist IDs: language-independent, used for answer matching. */
+  artistIds: string[];
   album: string;
   year: number | null;
   image: string | null;
@@ -60,8 +62,11 @@ export interface ArtistInfo {
 
 export interface Suggestion {
   key: string;
+  /** Spotify track ID of this exact version. */
+  trackId: string;
   title: string;
   artists: string;
+  artistIds: string[];
 }
 
 /* ---------------- party ---------------- */

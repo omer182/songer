@@ -95,6 +95,26 @@ db.exec(`
   );
 `);
 
+/* ---------- migrations ---------- */
+
+const hasColumn = (table: string, col: string) =>
+  (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === col);
+
+/** True when this start changed the schema in a way that needs the Spotify library re-read. */
+export let needsResync = false;
+
+// v2: artist IDs for spelling-proof matching, Hebrew artist names, playlist ownership.
+if (!hasColumn('tracks', 'artist_ids')) {
+  db.exec(`ALTER TABLE tracks ADD COLUMN artist_ids TEXT NOT NULL DEFAULT ''`);
+  needsResync = true;
+}
+if (!hasColumn('playlists', 'owner_id')) {
+  db.exec(`ALTER TABLE playlists ADD COLUMN owner_id TEXT NOT NULL DEFAULT ''`);
+  db.exec(`ALTER TABLE playlists ADD COLUMN collaborative INTEGER NOT NULL DEFAULT 0`);
+  needsResync = true;
+}
+if (needsResync) db.exec('DELETE FROM source_sync');
+
 /** Run fn inside a transaction. node:sqlite has no helper for this. */
 export function tx<T>(fn: () => T): T {
   db.exec('BEGIN');

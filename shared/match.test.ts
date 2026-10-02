@@ -48,3 +48,16 @@ describe('songKey / matchesQuery', () => {
     expect(matchesQuery(h, '  ')).toBe(false);
   });
 });
+
+describe('isCorrect with Spotify IDs', () => {
+  const answer = { id: 'trk1', title: 'מעולה', artists: 'אייל לוי', artistIds: ['art1'] };
+  it('accepts the exact track regardless of spelling', () => {
+    expect(isCorrect({ trackId: 'trk1', title: 'Meule', artists: 'Eyal Levi' }, answer)).toBe(true);
+  });
+  it('accepts another version by the same artist ID even when names are spelled differently', () => {
+    expect(isCorrect({ trackId: 'trk2', title: 'מעולה', artists: 'Eyal Levi', artistIds: ['art1'] }, answer)).toBe(true);
+  });
+  it('rejects the same title by a different artist', () => {
+    expect(isCorrect({ trackId: 'trk3', title: 'מעולה', artists: 'מישהו אחר', artistIds: ['art9'] }, answer)).toBe(false);
+  });
+});

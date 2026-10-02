@@ -91,7 +91,7 @@ export function Solo() {
 
   function submit() {
     if (!guess || !track) return;
-    advance({ type: isCorrect({ title: guess.title, artists: guess.artists }, track) ? 'win' : 'miss', guess });
+    advance({ type: isCorrect(guess, track) ? 'win' : 'miss', guess });
   }
 
   function nextSong() {

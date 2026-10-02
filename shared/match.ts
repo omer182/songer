@@ -37,6 +37,10 @@ export interface SongRef {
   title: string;
   /** Comma-separated or array of artist names. */
   artists: string | string[];
+  /** Spotify IDs, when known. They make matching independent of how a name is spelled (Eyal Levi / אייל לוי). */
+  trackId?: string;
+  id?: string;
+  artistIds?: string[];
 }
 
 const artistList = (a: string | string[]) =>
@@ -48,7 +52,11 @@ export function songKey(s: SongRef): string {
 }
 
 export function isCorrect(guess: SongRef, answer: SongRef): boolean {
+  const gid = guess.trackId ?? guess.id;
+  const aid = answer.trackId ?? answer.id;
+  if (gid && aid && gid === aid) return true;
   if (normTitle(guess.title) !== normTitle(answer.title)) return false;
+  if (guess.artistIds?.length && answer.artistIds?.length && guess.artistIds.some((x) => answer.artistIds!.includes(x))) return true;
   const a = new Set(artistList(answer.artists));
   return artistList(guess.artists).some((x) => a.has(x));
 }

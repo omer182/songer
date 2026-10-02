@@ -9,17 +9,17 @@ const TOP_RANGES: TopRange[] = ['short_term', 'medium_term', 'long_term'];
 /* ---------- storage helpers ---------- */
 
 const upsertTrack = db.prepare(
-  `INSERT INTO tracks (id, uri, title, artists, album, year, image, duration_ms, norm)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-   ON CONFLICT(id) DO UPDATE SET title = excluded.title, artists = excluded.artists, album = excluded.album,
-     year = excluded.year, image = COALESCE(excluded.image, tracks.image), norm = excluded.norm`,
+  `INSERT INTO tracks (id, uri, title, artists, artist_ids, album, year, image, duration_ms, norm)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+   ON CONFLICT(id) DO UPDATE SET title = excluded.title, artists = excluded.artists, artist_ids = excluded.artist_ids,
+     album = excluded.album, year = excluded.year, image = COALESCE(excluded.image, tracks.image), norm = excluded.norm`,
 );
 
 function saveSource(userId: string, source: string, tracks: (Track | null)[]) {
   const list = tracks.filter((t): t is Track => !!t);
   tx(() => {
     for (const t of list) {
-      upsertTrack.run(t.id, t.uri, t.title, t.artists, t.album, t.year, t.image, t.durationMs, normBasic(`${t.title} ${t.artists}`));
+      upsertTrack.run(t.id, t.uri, t.title, t.artists, t.artistIds.join(','), t.album, t.year, t.image, t.durationMs, normBasic(`${t.title} ${t.artists}`));
     }
     db.prepare('DELETE FROM user_tracks WHERE user_id = ? AND source = ?').run(userId, source);
     const ins = db.prepare('INSERT OR IGNORE INTO user_tracks (user_id, track_id, source, pos) VALUES (?, ?, ?, ?)');
@@ -43,6 +43,7 @@ const rowToTrack = (r: Record<string, unknown>): Track => ({
   uri: r.uri as string,
   title: r.title as string,
   artists: r.artists as string,
+  artistIds: String(r.artist_ids || '').split(',').filter(Boolean),
   album: r.album as string,
   year: (r.year as number | null) ?? null,
   image: (r.image as string | null) ?? null,
@@ -89,13 +90,16 @@ export function syncLibrary(userId: string): Promise<void> {
       saveSource(userId, 'recent', recent.items.map((x) => toTrack(x.track)));
 
       type SpPlaylist = { id: string; name: string; images?: { url: string }[] | null; owner?: { display_name?: string; id: string };
-        tracks?: { total: number }; items?: { total: number } };
+        collaborative?: boolean; tracks?: { total: number }; items?: { total: number } };
       const pls = (await allPages<SpPlaylist | null>(userId, '/me/playlists?limit=50', 1000)).filter((p): p is SpPlaylist => !!p);
       tx(() => {
         db.prepare('DELETE FROM playlists WHERE user_id = ?').run(userId);
-        const ins = db.prepare('INSERT OR REPLACE INTO playlists (user_id, id, name, image, count, owner, pos) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        const ins = db.prepare(
+          'INSERT OR REPLACE INTO playlists (user_id, id, name, image, count, owner, owner_id, collaborative, pos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        );
         pls.forEach((p, i) =>
-          ins.run(userId, p.id, p.name, p.images?.[0]?.url ?? null, p.items?.total ?? p.tracks?.total ?? 0, p.owner?.display_name || p.owner?.id || '', i),
+          ins.run(userId, p.id, p.name, p.images?.[0]?.url ?? null, p.items?.total ?? p.tracks?.total ?? 0,
+            p.owner?.display_name || p.owner?.id || '', p.owner?.id ?? '', p.collaborative ? 1 : 0, i),
         );
       });
 
@@ -144,8 +148,11 @@ export function libraryStatus(userId: string): LibraryStatus {
   };
 }
 
+/** Only playlists you own or collaborate on: Spotify refuses to share the songs of anyone else's playlist with personal apps. */
 export function listPlaylists(userId: string): PlaylistInfo[] {
-  return db.prepare('SELECT id, name, image, count, owner FROM playlists WHERE user_id = ? ORDER BY pos').all(userId) as unknown as PlaylistInfo[];
+  return db
+    .prepare('SELECT id, name, image, count, owner FROM playlists WHERE user_id = ? AND (owner_id = user_id OR collaborative = 1) AND count > 0 ORDER BY pos')
+    .all(userId) as unknown as PlaylistInfo[];
 }
 
 export function listArtists(userId: string): ArtistInfo[] {
@@ -164,7 +171,7 @@ async function ensurePlaylist(userId: string, id: string) {
     saveSource(userId, source, items.map((x) => toTrack(x.item ?? x.track)));
   } catch (e) {
     if (e instanceof SpotifyError && (e.status === 403 || e.status === 404)) {
-      throw new SpotifyError(e.status, "Spotify won't share this playlist's songs with Songer. Spotify-made playlists are off-limits to personal apps; try one made by a person.");
+      throw new SpotifyError(e.status, "Spotify only shares songs from playlists you own. To use this one, add its songs to a playlist of your own in Spotify.");
     }
     throw e;
   }
@@ -190,7 +197,8 @@ async function ensureArtist(userId: string, id: string) {
   const source = `artist:${id}`;
   if (Date.now() - syncedAt(userId, source) < 7 * 24 * HOUR) return;
   type AlbumLite = { id: string; name: string; album_type: string; release_date?: string };
-  const albums = await allPages<AlbumLite>(userId, `/artists/${encodeURIComponent(id)}/albums?include_groups=album,single&limit=50`, 300);
+  // Spotify caps this endpoint at 10 per page for personal apps (undocumented; 20+ returns "Invalid limit").
+  const albums = await allPages<AlbumLite>(userId, `/artists/${encodeURIComponent(id)}/albums?include_groups=album,single&limit=10`, 80);
   // Albums first (studio versions beat singles), skip obvious live/remix records, newest 40 at most.
   const picked = albums
     .filter((a) => !/\b(live|remix(es)?|karaoke|instrumental)\b/i.test(a.name))
@@ -261,22 +269,25 @@ export async function suggest(userId: string, q: string): Promise<Suggestion[]> 
   const query = normBasic(q);
   if (query.length < 2) return [];
   const first = query.split(' ').sort((a, b) => b.length - a.length)[0];
+  type Hit = { id: string; title: string; artists: string; artist_ids: string; norm: string };
   const local = (
     db
       .prepare(
-        `SELECT DISTINCT t.title, t.artists, t.norm FROM tracks t
+        `SELECT DISTINCT t.id, t.title, t.artists, t.artist_ids, t.norm FROM tracks t
          WHERE t.norm LIKE ? AND EXISTS (SELECT 1 FROM user_tracks ut WHERE ut.user_id = ? AND ut.track_id = t.id)
          LIMIT 300`,
       )
-      .all(`%${first}%`, userId) as { title: string; artists: string; norm: string }[]
+      .all(`%${first}%`, userId) as Hit[]
   )
     .filter((r) => matchesQuery(r.norm, query))
     .sort((a, b) => Number(b.norm.startsWith(query)) - Number(a.norm.startsWith(query)) || a.title.length - b.title.length);
 
-  let remote: { title: string; artists: string }[] = [];
+  let remote: Omit<Hit, 'norm'>[] = [];
   try {
     const res = await api<{ tracks: { items: (SpTrack | null)[] } }>(userId, `/search?type=track&limit=10&q=${encodeURIComponent(q)}`);
-    remote = res.tracks.items.filter((t): t is SpTrack => !!t).map((t) => ({ title: t.name, artists: t.artists.map((a) => a.name).join(', ') }));
+    remote = res.tracks.items
+      .filter((t): t is SpTrack => !!t?.id)
+      .map((t) => ({ id: t.id!, title: t.name, artists: t.artists.map((a) => a.name).join(', '), artist_ids: t.artists.map((a) => a.id).join(',') }));
   } catch {
     /* local results are enough if Spotify search hiccups */
   }
@@ -287,7 +298,7 @@ export async function suggest(userId: string, q: string): Promise<Suggestion[]> 
     const key = songKey(s);
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ key, title: s.title, artists: s.artists });
+    out.push({ key, trackId: s.id, title: s.title, artists: s.artists, artistIds: s.artist_ids.split(',').filter(Boolean) });
     if (out.length >= 8) break;
   }
   return out;
@@ -297,15 +308,6 @@ export async function searchArtists(userId: string, q: string): Promise<ArtistIn
   type SpArtist = { id: string; name: string; images?: { url: string; width?: number }[] };
   const res = await api<{ artists: { items: (SpArtist | null)[] } }>(userId, `/search?type=artist&limit=10&q=${encodeURIComponent(q)}`);
   return res.artists.items.filter((a): a is SpArtist => !!a).map((a) => ({ id: a.id, name: a.name, image: pickImage(a.images) }));
-}
-
-export async function searchPlaylists(userId: string, q: string): Promise<PlaylistInfo[]> {
-  type SpPl = { id: string; name: string; images?: { url: string }[] | null; owner?: { display_name?: string; id: string };
-    tracks?: { total: number }; items?: { total: number } };
-  const res = await api<{ playlists: { items: (SpPl | null)[] } }>(userId, `/search?type=playlist&limit=10&q=${encodeURIComponent(q)}`);
-  return res.playlists.items
-    .filter((p): p is SpPl => !!p)
-    .map((p) => ({ id: p.id, name: p.name, image: p.images?.[0]?.url ?? null, count: p.items?.total ?? p.tracks?.total ?? 0, owner: p.owner?.display_name || p.owner?.id || '' }));
 }
 
 export function saveSoloResult(userId: string, label: string, score: number, maxScore: number, detail: unknown) {

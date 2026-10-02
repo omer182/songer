@@ -6,11 +6,11 @@ import { fileURLToPath } from 'node:url';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { Server } from 'socket.io';
 import { config, spotifyConfigured } from './config.js';
-import { db } from './db.js';
+import { db, needsResync } from './db.js';
 import { cookieOptions, createSession, destroySession, parseCookies, requireUser, signValue, unsignValue } from './auth.js';
 import { accessToken, authorizeUrl, completeLogin, SpotifyError } from './spotify.js';
 import {
-  buildPool, libraryStatus, listArtists, listPlaylists, saveSoloResult, searchArtists, searchPlaylists, suggest, syncLibrary,
+  buildPool, libraryStatus, listArtists, listPlaylists, saveSoloResult, searchArtists, suggest, syncLibrary,
 } from './library.js';
 import { attachParty } from './party.js';
 import type { Me, Source } from '../shared/types.js';
@@ -112,12 +112,6 @@ app.get(
 );
 
 app.get(
-  '/api/search/playlists',
-  requireUser,
-  route(async (req, res) => res.json(await searchPlaylists(req.userId!, String(req.query.q || '')))),
-);
-
-app.get(
   '/api/search/songs',
   requireUser,
   route(async (req, res) => res.json(await suggest(req.userId!, String(req.query.q || '')))),
@@ -163,5 +157,11 @@ attachParty(io);
 
 server.listen(config.port, () => {
   console.log(`Songer server on http://127.0.0.1:${config.port}  (public URL ${config.publicUrl})`);
+  if (needsResync) {
+    // The schema changed (e.g. Hebrew names, artist IDs): re-read every signed-in library once.
+    for (const { id } of db.prepare('SELECT id FROM users').all() as { id: string }[]) {
+      syncLibrary(id).then(() => console.log(`Library re-synced for ${id}`)).catch((e) => console.warn(`Re-sync failed for ${id}: ${e.message}`));
+    }
+  }
   if (!spotifyConfigured()) console.warn('Spotify is not configured yet: set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env');
 });

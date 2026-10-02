@@ -31,7 +31,9 @@ export type Source =
   | { type: 'recent' }
   | { type: 'playlist'; id: string; name?: string }
   | { type: 'artist'; id: string; name?: string }
-  | { type: 'album'; id: string; name?: string };
+  | { type: 'album'; id: string; name?: string }
+  /** A public Deezer playlist; songs are matched to Spotify for playback. */
+  | { type: 'deezer'; id: string; name?: string };
 
 export interface Me {
   id: string;
@@ -52,6 +54,8 @@ export interface PlaylistInfo {
   image: string | null;
   count: number;
   owner: string;
+  /** False for playlists someone else made: Spotify won't share their songs with personal apps. */
+  available: boolean;
 }
 
 export interface ArtistInfo {

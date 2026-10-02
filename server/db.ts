@@ -127,6 +127,9 @@ if (!hasColumn('playlists', 'owner_id')) {
 }
 if (needsResync) db.exec('DELETE FROM source_sync');
 
+// v3: Deezer → Spotify matches (spotify_id NULL = no match found).
+db.exec(`CREATE TABLE IF NOT EXISTS deezer_map (deezer_id TEXT PRIMARY KEY, spotify_id TEXT, checked_at INTEGER NOT NULL)`);
+
 /** Run fn inside a transaction. node:sqlite has no helper for this. */
 export function tx<T>(fn: () => T): T {
   db.exec('BEGIN');

@@ -13,6 +13,7 @@ import {
   buildPool, libraryStatus, listArtists, listPlaylists, saveSoloResult, searchArtists, suggest, syncLibrary,
 } from './library.js';
 import { attachParty } from './party.js';
+import { searchDeezerPlaylists } from './deezer.js';
 import type { Me, Source } from '../shared/types.js';
 
 const app = express();
@@ -133,6 +134,12 @@ app.get(
   '/api/search/artists',
   requireUser,
   route(async (req, res) => res.json(await searchArtists(req.userId!, String(req.query.q || '')))),
+);
+
+app.get(
+  '/api/search/deezer-playlists',
+  requireUser,
+  route(async (req, res) => res.json(await searchDeezerPlaylists(String(req.query.q || '')))),
 );
 
 app.get(

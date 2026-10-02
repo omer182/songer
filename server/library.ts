@@ -1,6 +1,7 @@
 import { db, tx } from './db.js';
 import { allPages, api, pickImage, SpotifyError, toTrack, type SpAlbumLite, type SpTrack } from './spotify.js';
 import { matchesQuery, normBasic, songKey } from '../shared/match.js';
+import { deezerPlaylistTracks, resolveOnSpotify } from './deezer.js';
 import type { ArtistInfo, LibraryStatus, PlaylistInfo, Source, Suggestion, TopRange, Track } from '../shared/types.js';
 
 const HOUR = 3600_000;
@@ -148,11 +149,18 @@ export function libraryStatus(userId: string): LibraryStatus {
   };
 }
 
-/** Only playlists you own or collaborate on: Spotify refuses to share the songs of anyone else's playlist with personal apps. */
+/**
+ * Your playlists, playable ones first. Playlists someone else made come back with available=false:
+ * Spotify refuses to share their songs with personal apps (copy them into your own to play them).
+ */
 export function listPlaylists(userId: string): PlaylistInfo[] {
-  return db
-    .prepare('SELECT id, name, image, count, owner FROM playlists WHERE user_id = ? AND (owner_id = user_id OR collaborative = 1) AND count > 0 ORDER BY pos')
-    .all(userId) as unknown as PlaylistInfo[];
+  const rows = db
+    .prepare(
+      `SELECT id, name, image, count, owner, (owner_id = user_id OR collaborative = 1) AS available
+       FROM playlists WHERE user_id = ? AND count > 0 ORDER BY available DESC, pos`,
+    )
+    .all(userId) as (Omit<PlaylistInfo, 'available'> & { available: number })[];
+  return rows.map((r) => ({ ...r, available: !!r.available }));
 }
 
 export function listArtists(userId: string): ArtistInfo[] {
@@ -237,6 +245,7 @@ export function sourceKey(s: Source): string {
     case 'playlist': return `pl:${s.id}`;
     case 'artist': return `artist:${s.id}`;
     case 'album': return `album:${s.id}`;
+    case 'deezer': return `dz:${s.id}`;
   }
 }
 
@@ -249,8 +258,35 @@ const shuffle = <T>(a: T[]) => {
   return b;
 };
 
+/** Random songs from a Deezer playlist, each matched to Spotify; tries extra songs to cover misses. */
+async function deezerPool(userId: string, id: string, count: number): Promise<Track[]> {
+  const list = shuffle(await deezerPlaylistTracks(id)).filter((t) => t.readable !== false);
+  const out: Track[] = [];
+  const seen = new Set<string>();
+  // Resolve in small batches until we have enough (each try costs one or two Spotify searches).
+  for (let i = 0; i < list.length && out.length < count && i < count * 3; i += 4) {
+    const batch = await Promise.all(list.slice(i, i + 4).map((d) => resolveOnSpotify(userId, d).catch(() => null)));
+    for (const t of batch) {
+      if (!t || out.length >= count) continue;
+      const k = songKey(t);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(t);
+    }
+  }
+  if (!out.length) throw new SpotifyError(404, "Couldn't find this playlist's songs on Spotify. Try another playlist.");
+  // Keep them in the guess index too.
+  tx(() => {
+    for (const t of out) upsertTrack.run(t.id, t.uri, t.title, t.artists, t.artistIds.join(','), t.album, t.year, t.image, t.durationMs, normBasic(`${t.title} ${t.artists}`));
+    const ins = db.prepare('INSERT OR IGNORE INTO user_tracks (user_id, track_id, source, pos) VALUES (?, ?, ?, 0)');
+    for (const t of out) ins.run(userId, t.id, `dz:${id}`);
+  });
+  return out;
+}
+
 /** Pick `count` random, de-duplicated songs from a source, loading it from Spotify if needed. */
 export async function buildPool(userId: string, source: Source, count: number): Promise<Track[]> {
+  if (source.type === 'deezer') return deezerPool(userId, source.id, count);
   if (source.type === 'playlist') await ensurePlaylist(userId, source.id);
   if (source.type === 'artist') await ensureArtist(userId, source.id);
   if (source.type === 'album') await ensureAlbum(userId, source.id);

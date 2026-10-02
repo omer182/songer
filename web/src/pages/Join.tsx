@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom';
 import type { HostAction, PartyState } from '../../../shared/types';
 import { getSocket, request } from '../lib/socket';
-import { Art } from '../components/bits';
+import { Art, Logo } from '../components/bits';
 import { usePartySounds } from '../lib/partySounds';
 import { unlockSfx } from '../lib/sfx';
 import { HostPanel } from './Remote';
@@ -137,7 +137,7 @@ export function Join() {
     return (
       <div className="page">
         <div className="phone" style={{ textAlign: 'left' }}>
-          <div className="hd"><span className="logo" style={{ fontSize: 22 }}>song<b>er</b></span><span className="mono muted">{state.code}</span></div>
+          <div className="hd"><Logo size="sm" link={false} /><span className="mono muted">{state.code}</span></div>
           <h1 className="h1">You're invited</h1>
           <p className="muted" style={{ margin: 0 }}>{state.packLabel} · {state.songCount} songs</p>
           <input className="field" placeholder="Your name" value={name} maxLength={20} onChange={(e) => setName(e.target.value)} dir="auto" />

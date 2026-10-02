@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MAX_STAGE, PARTY_POINTS, STAGES_MS, type HostAction, type PartyState } from '../../../shared/types';
 import { getSocket, request } from '../lib/socket';
-import { Art } from '../components/bits';
+import { Art, Logo } from '../components/bits';
 
 // The host's phone: shows the answer privately and has the judge buttons, so the TV never spoils it.
 
@@ -46,7 +46,7 @@ export function Remote() {
     return (
       <div className="page">
         <div className="phone">
-          <div className="hd"><span className="logo" style={{ fontSize: 22 }}>song<b>er</b></span><span className="mono muted">Host remote</span></div>
+          <div className="hd"><Logo size="sm" link={false} /><span className="mono muted">Host remote</span></div>
           <div className="mid">
             <div className="h2">No party running</div>
             <p className="muted" style={{ margin: 0 }}>Open the lobby on the laptop. This screen picks it up automatically.</p>
@@ -77,7 +77,7 @@ export function HostPanel({ state, act: send, role }: { state: PartyState; act: 
     <div className="page">
       <div className="phone" style={{ textAlign: 'left', minHeight: 'auto' }}>
         <div className="hd">
-          <span className="logo" style={{ fontSize: 22 }}>song<b>er</b></span>
+          <Logo size="sm" link={false} />
           <span className="mono muted">{role} · {st.code}</span>
         </div>
 

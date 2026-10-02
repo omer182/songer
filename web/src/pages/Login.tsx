@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { Logo } from '../components/bits';
 
 export function Login() {
   const [cfg, setCfg] = useState<{ spotifyConfigured: boolean; redirectUri: string } | null>(null);
@@ -11,13 +12,8 @@ export function Login() {
   return (
     <div className="page">
       <div className="hero">
-        <div className="bars" aria-hidden="true">
-          {[14, 22, 36, 55, 78, 100].map((h, i) => (
-            <span key={i} className={i < 3 ? 'on' : ''} style={{ height: `${h}%` }} />
-          ))}
-        </div>
-        <h1 className="h1">
-          song<span style={{ color: 'var(--pink)' }}>er</span>
+        <h1 style={{ margin: 0 }}>
+          <Logo size="lg" link={false} />
         </h1>
         <p className="muted" style={{ margin: 0, maxWidth: 420 }}>
           Name the song from its first half-second. Your music comes from your Spotify: top tracks, liked songs, any band or playlist.

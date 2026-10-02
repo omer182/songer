@@ -54,10 +54,32 @@ export function Eq({ bars = 14 }: { bars?: number }) {
   );
 }
 
-export function Logo() {
-  return (
-    <a className="logo" href="/">
-      song<b>er</b>
+// Bar heights echo the clip lengths: each try hears a little more of the song.
+const MARK_BARS = [22, 34, 48, 64, 82, 100];
+
+/** The Songer mark: an equalizer tile, the wordmark and "by Rio". */
+export function Logo({ size = 'md', link = true }: { size?: 'sm' | 'md' | 'lg'; link?: boolean }) {
+  const inner = (
+    <>
+      <span className="brand-mark" aria-hidden="true">
+        {MARK_BARS.map((h, i) => (
+          <i key={i} style={{ height: `${h}%`, animationDelay: `${i * 0.11}s` }} />
+        ))}
+      </span>
+      <span className="brand-text">
+        <span className="brand-word">
+          song<b>er</b>
+        </span>
+        <span className="brand-by">by Rio</span>
+      </span>
+    </>
+  );
+  const cls = `brand ${size}`;
+  return link ? (
+    <a className={cls} href="/" aria-label="Songer by Rio, home">
+      {inner}
     </a>
+  ) : (
+    <span className={cls}>{inner}</span>
   );
 }

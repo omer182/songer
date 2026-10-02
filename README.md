@@ -7,7 +7,7 @@ Two ways to play:
 - **Solo**: pick a source and guess song by song. Type-ahead suggestions search your library and all of Spotify, in Hebrew or English.
 - **Party**: a laptop on the TV plays the music. Everyone scans a QR code, picks a team, and their phone becomes a **buzzer**. First team to buzz answers out loud; a judge decides; wrong answers lock the team out and the others can steal.
 
-Self-hosted on the homeserver at **https://songer.omersher.com**. A private, single-household app: only the owner signs in with Spotify; party guests need no account.
+Self-hosted on the homeserver at **https://songer.omersher.com**. A single-household app: only the owner signs in with Spotify; party guests need no account. To run your own, create your own Spotify app (below).
 
 ---
 
@@ -119,12 +119,9 @@ Buzzing stops the music and plays a quiz-show buzzer on the TV; correct and wron
 
 Pushing to `main` runs GitHub Actions (typecheck, tests, Docker build) and publishes **`ghcr.io/omer182/songer:latest`** (also tagged `sha-<commit>`).
 
-### 1. Let Portainer pull the private image (once)
+### 1. Image visibility (once)
 
-The repo is private, so its image is too.
-
-1. GitHub → Settings → Developer settings → **Personal access tokens (classic)** → generate one with only **`read:packages`**.
-2. Portainer → **Registries** → **Add registry** → **Custom registry**: URL `ghcr.io`, Authentication on, username `omer182`, password = that token.
+The image is public, so Portainer pulls it without credentials. (New container packages start private on GitHub even for a public repo: package page → Package settings → Change visibility → Public.)
 
 ### 2. Data folder (once)
 
@@ -210,4 +207,4 @@ Spotify locked down personal ("Development mode") apps in 2024 to 2026. What tha
 | Playlist: "Spotify only shares songs from playlists you own" | Expected for other people's playlists; copy the songs into your own |
 | Phones can't open the QR link (dev) | Set `JOIN_BASE_URL` to the LAN address, same Wi-Fi, firewall allows Node, no Wi-Fi client isolation |
 | Buzzers don't connect (homeserver) | Turn on Websockets Support for the proxy host |
-| Portainer: `pull access denied` / `unauthorized` | Add the ghcr.io registry with a `read:packages` token (step 1) |
+| Portainer: `pull access denied` / `unauthorized` | Make the ghcr package public (step 1), or add `ghcr.io` as a registry in Portainer with a `read:packages` token |

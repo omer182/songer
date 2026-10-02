@@ -5,6 +5,8 @@ services:
     image: ghcr.io/omer182/songer:latest
     container_name: songer
     restart: unless-stopped
+    ports:
+      - 5100:5100 # http://<server-ip>:5100 on the LAN; Nginx Proxy Manager can also reach songer:5100 over the proxy network
     networks: [proxy]
     environment:
       PUBLIC_URL: https://songer.omersher.com

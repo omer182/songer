@@ -149,7 +149,7 @@ Keep `TOKEN_ENC_KEY` stable: changing it makes the stored Spotify login unreadab
 
 ### 4. Nginx Proxy Manager
 
-Proxy host **`songer.omersher.com`** → scheme `http`, forward host **`songer`**, port **`5100`**, **Websockets Support ON** (party buzzers need it), Block Common Exploits on; SSL: Let's Encrypt, Force SSL, HTTP/2.
+Proxy host **`songer.omersher.com`** → scheme `http`, forward host **`songer`** (or the server's IP), port **`5100`**, **Websockets Support ON** (party buzzers need it), Block Common Exploits on; SSL: Let's Encrypt, Force SSL, HTTP/2.
 
 ### 5. Update
 

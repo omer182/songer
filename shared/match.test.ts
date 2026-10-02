@@ -1,0 +1,50 @@
+import { describe, expect, it } from 'vitest';
+import { isCorrect, matchesQuery, normBasic, normTitle, songKey } from './match.js';
+
+describe('normTitle', () => {
+  it('drops version noise', () => {
+    expect(normTitle('Mr. Brightside')).toBe('mr brightside');
+    expect(normTitle('Karma Police (Remastered)')).toBe('karma police');
+    expect(normTitle('Creep - Remastered 2009')).toBe('creep');
+    expect(normTitle('Adam\'s Song - Live')).toBe('adam s song');
+    expect(normTitle('Hold On (feat. Someone)')).toBe('hold on');
+    expect(normTitle('Song [Radio Edit]')).toBe('song');
+  });
+  it('keeps meaningful brackets and dashes', () => {
+    expect(normTitle('(I Can\'t Get No) Satisfaction')).toBe('i can t get no satisfaction');
+    expect(normTitle('Why\'d You Only Call Me When You\'re High?')).toBe('why d you only call me when you re high');
+  });
+  it('handles Hebrew, including niqqud', () => {
+    expect(normTitle('לא עוזב את העיר')).toBe('לא עוזב את העיר');
+    expect(normBasic('שָׁלוֹם')).toBe('שלום');
+  });
+});
+
+describe('isCorrect', () => {
+  const answer = { title: 'All The Small Things', artists: 'blink-182' };
+  it('accepts other versions of the same song', () => {
+    expect(isCorrect({ title: 'All the Small Things - Remastered', artists: 'blink-182' }, answer)).toBe(true);
+  });
+  it('rejects a different song or a cover', () => {
+    expect(isCorrect({ title: 'First Date', artists: 'blink-182' }, answer)).toBe(false);
+    expect(isCorrect({ title: 'All The Small Things', artists: 'Some Cover Band' }, answer)).toBe(false);
+  });
+  it('matches any featured artist', () => {
+    expect(isCorrect({ title: 'Song', artists: 'B' }, { title: 'Song', artists: ['A', 'B'] })).toBe(true);
+  });
+  it('ignores a leading "The"', () => {
+    expect(isCorrect({ title: 'Last Nite', artists: 'Strokes' }, { title: 'Last Nite', artists: 'The Strokes' })).toBe(true);
+  });
+});
+
+describe('songKey / matchesQuery', () => {
+  it('dedupes versions', () => {
+    expect(songKey({ title: 'Creep', artists: 'Radiohead' })).toBe(songKey({ title: 'Creep - Remastered', artists: 'Radiohead, X' }));
+  });
+  it('needs every token', () => {
+    const h = normBasic('Do I Wanna Know? Arctic Monkeys');
+    expect(matchesQuery(h, 'wanna arctic')).toBe(true);
+    expect(matchesQuery(h, 'wanna radiohead')).toBe(false);
+    expect(matchesQuery(h, '  ')).toBe(false);
+  });
+});

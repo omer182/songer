@@ -1,0 +1,23 @@
+# Portainer stack for the homeserver. Put the secrets in the stack's environment (or a stack.env
+# kept out of git). Route songer.omersher.com to songer:5100 in Nginx Proxy Manager and turn on
+# "Websockets Support" for that host, or the party buzzers won't connect.
+services:
+  songer:
+    image: ghcr.io/omer182/songer:latest
+    container_name: songer
+    restart: unless-stopped
+    environment:
+      - PUBLIC_URL=https://songer.omersher.com
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - TOKEN_ENC_KEY=${TOKEN_ENC_KEY}
+      - ALLOWED_SPOTIFY_IDS=${ALLOWED_SPOTIFY_IDS:-}
+    volumes:
+      - /hosted-apps/songer/data:/data
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

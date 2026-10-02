@@ -1,0 +1,126 @@
+// Types shared by the API server and the web app.
+
+/** Clip lengths for each try / party stage, in milliseconds. */
+export const STAGES_MS = [500, 1000, 2000, 4000, 8000, 15000] as const;
+export const MAX_STAGE = STAGES_MS.length - 1;
+/** Party points for a correct song at each stage; naming only the artist earns ARTIST_POINTS. */
+export const PARTY_POINTS = [5, 4, 3, 2, 1, 1] as const;
+export const ARTIST_POINTS = 1;
+/** How long the reveal keeps playing for a sing-along. */
+export const REVEAL_MS = 20000;
+
+export interface Track {
+  id: string;
+  uri: string;
+  title: string;
+  /** Comma-separated artist names. */
+  artists: string;
+  album: string;
+  year: number | null;
+  image: string | null;
+  durationMs: number;
+}
+
+export type TopRange = 'short_term' | 'medium_term' | 'long_term';
+
+export type Source =
+  | { type: 'top'; range: TopRange }
+  | { type: 'liked' }
+  | { type: 'recent' }
+  | { type: 'playlist'; id: string; name?: string }
+  | { type: 'artist'; id: string; name?: string }
+  | { type: 'album'; id: string; name?: string };
+
+export interface Me {
+  id: string;
+  name: string;
+  image: string | null;
+}
+
+export interface LibraryStatus {
+  status: 'idle' | 'syncing' | 'error';
+  error: string | null;
+  finishedAt: number | null;
+  counts: { liked: number; top: number; playlists: number; artists: number; indexed: number };
+}
+
+export interface PlaylistInfo {
+  id: string;
+  name: string;
+  image: string | null;
+  count: number;
+  owner: string;
+}
+
+export interface ArtistInfo {
+  id: string;
+  name: string;
+  image: string | null;
+}
+
+export interface Suggestion {
+  key: string;
+  title: string;
+  artists: string;
+}
+
+/* ---------------- party ---------------- */
+
+export type PartyPhase = 'lobby' | 'round' | 'buzzed' | 'reveal' | 'final';
+
+export interface PartyMember {
+  id: string;
+  name: string;
+  connected: boolean;
+}
+
+export interface PartyTeam {
+  id: string;
+  name: string;
+  color: string;
+  score: number;
+  locked: boolean;
+  members: PartyMember[];
+}
+
+export interface PartyState {
+  code: string;
+  joinUrl: string;
+  phase: PartyPhase;
+  packLabel: string;
+  teams: PartyTeam[];
+  songIndex: number;
+  songCount: number;
+  stage: number;
+  buzz: { teamId: string; playerName: string; seconds: number } | null;
+  last: { teamId: string | null; points: number; artistOnly: boolean } | null;
+  /** Current song. Sent to the host always; to phones only once revealed. */
+  song: Track | null;
+  toast: string | null;
+  fastestBuzz: { playerName: string; teamId: string; seconds: number } | null;
+}
+
+/** Audio instructions the server sends to the host screen, which owns the Spotify player. */
+export type PartyCue =
+  | { kind: 'load'; uri: string }
+  | { kind: 'clip'; uri: string; ms: number }
+  | { kind: 'reveal'; uri: string }
+  | { kind: 'stop' };
+
+export type HostAction =
+  | { type: 'start' }
+  | { type: 'longer' }
+  | { type: 'replay' }
+  | { type: 'skip' }
+  | { type: 'judge'; verdict: 'song' | 'artist' | 'wrong' }
+  | { type: 'next' }
+  | { type: 'rematch' }
+  | { type: 'end' };
+
+export interface CreatePartyPayload {
+  packLabel: string;
+  tracks: Track[];
+  teams: { name: string; color: string }[];
+}
+
+export type Ack<T> = (res: { ok: true; data: T } | { ok: false; error: string }) => void;

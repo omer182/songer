@@ -1,0 +1,611 @@
+<title>Songer Game Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one reading column for the plan, breaking out into wide "stage" bands where the app mockups sit side by side. */
+:root{
+  --bg:#f6f4fb; --surface:#ffffff; --fg:#1b1730; --muted:#5f5a78; --line:#dedaf0;
+  --accent:#d6246e; --accent-2:#6b4cf6; --warn-bg:#fff4dc; --warn-fg:#6d4a00; --warn-line:#f0d38c;
+  --ok:#1f8f5f;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+  /* app-mockup palette: the app itself is dark in both page themes */
+  --app-bg:#14112b; --app-card:#221d44; --app-card-2:#2d2759; --app-fg:#f3f0ff; --app-muted:#a49dcc;
+  --app-pink:#ff3d7f; --app-yellow:#ffd23f; --app-cyan:#3fd8ff; --app-green:#4ade9b; --app-red:#ff5d5d;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#100e1f; --surface:#1a1731; --fg:#ece9fa; --muted:#a29dc0; --line:#2e2a4b;
+  --accent:#ff5c95; --accent-2:#9d86ff; --warn-bg:#2b2310; --warn-fg:#f5d690; --warn-line:#5a4716; --ok:#4ade9b;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#100e1f; --surface:#1a1731; --fg:#ece9fa; --muted:#a29dc0; --line:#2e2a4b;
+  --accent:#ff5c95; --accent-2:#9d86ff; --warn-bg:#2b2310; --warn-fg:#f5d690; --warn-line:#5a4716; --ok:#4ade9b;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 var(--body);margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px;padding-block:40px 80px}
+.col{max-width:760px}
+h1,h2,h3{font-family:var(--display);line-height:1.1;text-wrap:balance;margin:0}
+h1{font-size:clamp(2.6rem,6vw,4.2rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:clamp(1.6rem,3vw,2.1rem);font-weight:700;letter-spacing:-.01em}
+h3{font-size:1.15rem;font-weight:700}
+p{margin:0}
+.eyebrow{font:700 .72rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+section{display:grid;gap:18px;padding-block:44px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+.stack{display:grid;gap:12px}
+ul.clean{margin:0;padding-left:1.1em;display:grid;gap:6px}
+code,.mono{font-family:var(--mono);font-size:.86em}
+code{background:color-mix(in srgb,var(--accent-2) 12%,transparent);padding:.1em .35em;border-radius:4px}
+a{color:var(--accent-2)}
+
+/* hero clip bars */
+.hero{display:grid;gap:22px;padding-block:20px 36px}
+.bars{display:flex;gap:6px;align-items:flex-end;height:54px}
+.bars span{flex:1;max-width:120px;border-radius:6px;background:var(--line)}
+.bars span.on{background:var(--accent)}
+.bars-legend{display:flex;gap:6px;font:500 .72rem var(--mono);color:var(--muted)}
+.bars-legend span{flex:1;max-width:120px}
+
+/* callout */
+.callout{background:var(--warn-bg);color:var(--warn-fg);border:1px solid var(--warn-line);border-radius:14px;padding:20px 22px;display:grid;gap:12px}
+.callout h3{color:var(--warn-fg)}
+.callout ul{margin:0;padding-left:1.1em;display:grid;gap:8px}
+
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.93rem}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:700 .72rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:color-mix(in srgb,var(--accent-2) 6%,var(--surface))}
+tr:last-child td{border-bottom:0}
+td.y{color:var(--ok);font-weight:600}
+td.n{color:var(--accent);font-weight:600}
+
+/* mode cards */
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.mode{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:8px;align-content:start}
+.mode .tag{font:700 .7rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent-2)}
+.mode p{color:var(--muted);font-size:.95rem}
+
+/* mockup stage */
+.stage{display:flex;flex-wrap:wrap;gap:28px;justify-content:flex-start;align-items:flex-start;padding-block:8px}
+figure{margin:0;display:grid;gap:10px;justify-items:center}
+figcaption{font:500 .8rem var(--mono);color:var(--muted);text-align:center;max-width:280px}
+
+.phone{width:272px;max-width:100%;aspect-ratio:9/19;background:var(--app-bg);color:var(--app-fg);border-radius:34px;padding:14px 14px 16px;
+  box-shadow:0 0 0 7px #0b0918,0 18px 40px -12px rgba(20,10,60,.45);display:flex;flex-direction:column;gap:10px;overflow:hidden;font-family:var(--body);font-size:12.5px;line-height:1.4}
+.notch{width:84px;height:18px;background:#0b0918;border-radius:0 0 12px 12px;margin:-14px auto 2px}
+.app-top{display:flex;justify-content:space-between;align-items:center}
+.logo{font:800 17px var(--display);letter-spacing:-.02em}
+.logo b{color:var(--app-pink)}
+.avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--app-pink),var(--app-yellow));display:grid;place-items:center;font:700 11px var(--body);color:#14112b}
+.app-h{font:700 19px/1.15 var(--display)}
+.sub{color:var(--app-muted);font-size:11.5px}
+.card{background:var(--app-card);border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center}
+.card.sel{outline:2px solid var(--app-pink)}
+.card .t{font-weight:600}
+.card .s{color:var(--app-muted);font-size:11px}
+.grow{flex:1;min-width:0}
+.art{width:36px;height:36px;border-radius:8px;flex:none}
+.a1{background:linear-gradient(135deg,#ff3d7f,#6b4cf6)}
+.a2{background:linear-gradient(135deg,#ffd23f,#ff6a3d)}
+.a3{background:linear-gradient(135deg,#3fd8ff,#4ade9b)}
+.a4{background:linear-gradient(135deg,#6b4cf6,#14112b)}
+.a5{background:conic-gradient(from 40deg,#ffd23f,#ff3d7f,#3fd8ff,#ffd23f)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--app-card-2);border-radius:999px;padding:4px 10px;font-size:11px;color:var(--app-fg)}
+.chip.on{background:var(--app-pink);color:#fff;font-weight:600}
+.btn{background:var(--app-pink);color:#fff;border-radius:14px;padding:11px;text-align:center;font:700 13.5px var(--display);letter-spacing:.01em}
+.btn.ghost{background:transparent;outline:1.5px solid var(--app-card-2);color:var(--app-fg)}
+.btn.yellow{background:var(--app-yellow);color:#14112b}
+.spacer{flex:1}
+
+.clip{display:flex;gap:3px;height:30px;align-items:stretch}
+.clip i{display:block;background:var(--app-card-2);border-radius:4px}
+.clip i.played{background:var(--app-pink)}
+.clip i.cur{background:linear-gradient(90deg,var(--app-pink) 40%,var(--app-card-2) 40%)}
+.clip-lbl{display:flex;justify-content:space-between;color:var(--app-muted);font:500 9.5px var(--mono)}
+.play{width:62px;height:62px;border-radius:50%;background:var(--app-yellow);display:grid;place-items:center;margin:4px auto}
+.play::after{content:"";border-left:18px solid #14112b;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:5px}
+.input{background:var(--app-card);border-radius:12px;padding:10px 12px;color:var(--app-fg);outline:1.5px solid var(--app-cyan)}
+.input .caret{display:inline-block;width:1.5px;height:13px;background:var(--app-cyan);vertical-align:middle;margin-left:1px}
+.ac{background:var(--app-card-2);border-radius:12px;overflow:hidden}
+.ac div{padding:7px 12px;border-bottom:1px solid var(--app-card)}
+.ac div:last-child{border-bottom:0}
+.ac div.hl{background:color-mix(in srgb,var(--app-cyan) 22%,var(--app-card-2))}
+.ac small{color:var(--app-muted)}
+.try{display:flex;gap:8px;align-items:center;font-size:11.5px;padding:6px 10px;border-radius:10px;background:var(--app-card)}
+.try .x{color:var(--app-red);font-weight:700}
+.try .k{color:var(--app-muted)}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+
+.code-big{font:800 34px var(--mono);letter-spacing:.18em;text-align:center;color:var(--app-yellow)}
+.qr{width:64px;height:64px;border-radius:8px;flex:none;background:
+  repeating-linear-gradient(90deg,#f3f0ff 0 6px,transparent 6px 10px),
+  repeating-linear-gradient(0deg,#f3f0ff 0 5px,#221d44 5px 9px);opacity:.9}
+.pl{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--app-card)}
+.pl:last-child{border-bottom:0}
+.dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 10px var(--body);color:#14112b;flex:none}
+.ready{margin-left:auto;font:600 10px var(--mono);color:var(--app-green)}
+.wait{margin-left:auto;font:600 10px var(--mono);color:var(--app-muted)}
+
+.timer{display:flex;align-items:center;gap:10px}
+.ring{width:46px;height:46px;border-radius:50%;background:conic-gradient(var(--app-yellow) 0 62%,var(--app-card-2) 62% 100%);display:grid;place-items:center;flex:none}
+.ring span{width:36px;height:36px;border-radius:50%;background:var(--app-bg);display:grid;place-items:center;font:700 13px var(--mono)}
+.feed{display:grid;gap:5px}
+.feed div{display:flex;gap:8px;align-items:center;font-size:11.5px}
+.feed .ok{color:var(--app-green);font-weight:600;margin-left:auto;font-family:var(--mono);font-size:10.5px}
+.feed .no{color:var(--app-muted);margin-left:auto;font-family:var(--mono);font-size:10.5px}
+
+.reveal-art{width:120px;height:120px;border-radius:16px;margin:6px auto 0;background:conic-gradient(from 200deg,#ff3d7f,#ffd23f,#3fd8ff,#6b4cf6,#ff3d7f)}
+.pts{display:grid;gap:5px}
+.pts div{display:flex;align-items:center;gap:8px;background:var(--app-card);padding:6px 10px;border-radius:10px}
+.pts b{margin-left:auto;font-family:var(--mono);color:var(--app-yellow)}
+
+.buzz{width:190px;height:190px;border-radius:50%;margin:8px auto;display:grid;place-items:center;font:800 30px var(--display);color:#14112b;
+  background:radial-gradient(circle at 35% 30%,#fff3 0,transparent 40%),var(--app-cyan);box-shadow:0 10px 0 #1a8fb0,0 0 0 10px color-mix(in srgb,var(--app-cyan) 18%,transparent)}
+
+/* TV frame */
+.tv{width:620px;max-width:100%;aspect-ratio:16/9;background:var(--app-bg);color:var(--app-fg);border-radius:14px;padding:22px 26px;
+  box-shadow:0 0 0 10px #0b0918,0 24px 50px -16px rgba(20,10,60,.5);display:grid;grid-template-columns:1.2fr 1fr;gap:20px;font-family:var(--body);overflow:hidden}
+.tv-left{display:flex;flex-direction:column;gap:10px;min-width:0}
+.tv .round{font:700 11px var(--mono);letter-spacing:.14em;color:var(--app-muted);text-transform:uppercase}
+.tv .pack{font:800 26px/1.05 var(--display)}
+.tv .buzzed{background:color-mix(in srgb,var(--app-cyan) 20%,var(--app-card));border:1.5px solid var(--app-cyan);border-radius:14px;padding:12px 14px;display:grid;gap:4px}
+.tv .buzzed b{font:800 20px var(--display);color:var(--app-cyan)}
+.tv .eq{display:flex;gap:4px;align-items:flex-end;height:46px}
+.tv .eq i{flex:1;border-radius:3px;background:var(--app-pink)}
+.teams{display:grid;gap:8px;align-content:start}
+.team{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;background:var(--app-card);border-radius:12px;padding:9px 12px}
+.team .sw{width:12px;height:34px;border-radius:4px}
+.team .nm{font:700 14px var(--display)}
+.team .mb{color:var(--app-muted);font-size:10.5px}
+.team .sc{font:800 22px var(--mono)}
+.team.lead{outline:2px solid var(--app-yellow)}
+
+/* architecture */
+.arch{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:18px}
+.arch svg{display:block;min-width:760px;width:100%;height:auto}
+.arch text{font-family:var(--body);fill:var(--fg)}
+.arch .lbl{font-family:var(--mono);font-size:10.5px;fill:var(--muted)}
+.arch .box{fill:var(--bg);stroke:var(--line);stroke-width:1.5}
+.arch .box.hot{stroke:var(--accent);stroke-width:2}
+.arch .box.ext{stroke-dasharray:5 4}
+.arch .ln{stroke:var(--muted);stroke-width:1.5;fill:none}
+.arch .ln.a{stroke:var(--accent)}
+.arch .arrow{fill:var(--muted)}
+.arch .arrow.a{fill:var(--accent)}
+
+/* phases */
+.phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.phase{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:8px;align-content:start}
+.phase .n{font:800 .78rem var(--mono);color:var(--accent);letter-spacing:.08em}
+.phase ul{margin:0;padding-left:1.1em;color:var(--muted);font-size:.93rem;display:grid;gap:4px}
+
+.qs{display:grid;gap:12px;counter-reset:q}
+.q{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px 14px 52px;position:relative}
+.q::before{counter-increment:q;content:counter(q);position:absolute;left:16px;top:13px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font:700 .8rem var(--mono);display:grid;place-items:center}
+.q p{color:var(--muted);font-size:.93rem}
+.sources{font-size:.85rem;color:var(--muted)}
+.sources ul{margin:6px 0 0;padding-left:1.1em}
+
+pre.mermaid{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;overflow-x:auto;margin:0}
+
+@media (max-width:640px){
+  .tv{grid-template-columns:1fr;aspect-ratio:auto}
+  .stage{justify-content:center}
+}
+@media (prefers-reduced-motion:no-preference){
+  .bars span.on{animation:pulse 2.4s ease-in-out infinite}
+  .bars span.on:nth-child(2){animation-delay:.15s}.bars span.on:nth-child(3){animation-delay:.3s}
+  @keyframes pulse{50%{filter:brightness(1.25)}}
+}
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">Plan · v0.1 · 2 Oct 2026</span>
+    <h1>Songer</h1>
+    <p class="lede">A Songless-style "name that tune" game that uses your own Spotify library as the song source. Play it solo, battle friends online with a room code, or split the family into teams around the TV. Self-hosted on the homeserver next to geoquest.</p>
+    <div class="col stack">
+      <div class="bars" aria-hidden="true">
+        <span class="on" style="height:14%"></span><span class="on" style="height:22%"></span><span class="on" style="height:36%"></span><span style="height:55%"></span><span style="height:78%"></span><span style="height:100%"></span>
+      </div>
+      <div class="bars-legend"><span>0.5s</span><span>1s</span><span>2s</span><span>4s</span><span>8s</span><span>15s</span></div>
+      <p class="sub" style="color:var(--muted);font-size:.85rem">The core loop: you hear a tiny clip. Wrong guess or skip, and the clip gets longer. Six tries.</p>
+    </div>
+  </header>
+
+  <section class="col">
+    <span class="eyebrow">Read this first</span>
+    <h2>What Spotify allows in 2026</h2>
+    <p>Spotify tightened its developer platform a lot in 2024–2026. These rules shape the whole design, so here they are before anything else.</p>
+    <div class="callout">
+      <h3>The four constraints</h3>
+      <ul>
+        <li><b>5 Spotify accounts max.</b> A personal ("Development Mode") app can only be used by 5 Spotify accounts that you add by email in the dashboard. Public access needs a registered business with 250k monthly users. So <b>only you (and up to 4 others) can sign in with Spotify</b>. Everyone else plays as a guest.</li>
+        <li><b>You need Premium.</b> The app owner's account must have Premium, or the app stops working.</li>
+        <li><b>No more 30-second previews from Spotify.</b> <code>preview_url</code> is gone. Spotify audio only plays through the Web Playback SDK, which needs a Premium login on that device and doesn't run in phone browsers.</li>
+        <li><b>The developer policy prohibits games and trivia quizzes.</b> For a private app on your server with a few family accounts, the practical risk is Spotify revoking your Client ID. This app could never go public on Spotify's API. I designed it so Spotify is one replaceable input. It only answers "which songs do I like?"; it doesn't supply the audio clips for online play.</li>
+      </ul>
+    </div>
+    <p><b>How the design handles it:</b> Spotify is the <i>library</i> (what you like, your top tracks, your playlists, a band's albums). The <i>audio</i> comes from Deezer's free public 30-second previews, matched song by song. Deezer previews need no login and play on any phone. That means guests never need Spotify. On a laptop or TV where you're signed in, the app can use the Spotify player to play the real song intro.</p>
+  </section>
+
+  <section class="col">
+    <span class="eyebrow">Connection</span>
+    <h2>How it connects to your Spotify</h2>
+    <p>Standard "Sign in with Spotify" (OAuth Authorization Code flow). The secret and your refresh token stay on the homeserver. The browser only gets a session cookie.</p>
+<pre class="mermaid">
+sequenceDiagram
+    participant You as You (browser)
+    participant S as Songer server
+    participant SP as Spotify
+    participant DZ as Deezer (public API)
+    You->>S: Tap "Connect Spotify"
+    S->>SP: Redirect to Spotify login (scopes below)
+    SP-->>You: "Allow Songer to read your library?"
+    You->>SP: Allow
+    SP->>S: Callback with code
+    S->>SP: Exchange code for access + refresh token
+    S->>S: Store refresh token (encrypted, SQLite)
+    You->>S: "Quiz me on Radiohead"
+    S->>SP: Artist albums, then album tracks
+    S->>DZ: Find a 30s preview for each track
+    S->>S: Cache matches, build a 10-song pool
+    S-->>You: Round 1 clip (trimmed server-side)
+</pre>
+    <div class="stack">
+      <h3>Scopes requested</h3>
+      <ul class="clean">
+        <li><code>user-top-read</code>: your top tracks and artists (4 weeks / 6 months / all time)</li>
+        <li><code>user-library-read</code>: Liked Songs and saved albums</li>
+        <li><code>playlist-read-private</code>: your playlists</li>
+        <li><code>user-follow-read</code>: artists you follow (fills the "pick a band" list)</li>
+        <li><code>user-read-recently-played</code>: "what I listened to this week" mode</li>
+        <li><code>streaming</code>, <code>user-modify-playback-state</code>: optional, only for the real-intro player on the TV</li>
+      </ul>
+    </div>
+    <div class="stack">
+      <h3>Where songs can come from</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Source</th><th>How we get it</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>My top tracks</td><td><code>GET /me/top/tracks</code></td><td>3 time ranges. The best "Spotify knows me" mode.</td></tr>
+          <tr><td>Liked Songs</td><td><code>GET /me/tracks</code></td><td>Paged, cached server-side.</td></tr>
+          <tr><td>A playlist</td><td><code>GET /playlists/{id}/items</code></td><td>Uses the new <code>/items</code> path.</td></tr>
+          <tr><td>A band</td><td><code>/artists/{id}/albums</code> → <code>/albums/{id}/tracks</code></td><td>Spotify removed "artist top tracks" and batch lookups, so we walk albums one by one and cache them.</td></tr>
+          <tr><td>An album</td><td><code>GET /albums/{id}</code></td><td>"Name the track from OK Computer".</td></tr>
+          <tr><td>Genre / decade packs</td><td>Deezer charts and editorial playlists</td><td>No Spotify needed, which makes them ideal for family party mode.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="col stack">
+      <span class="eyebrow">Game modes</span>
+      <h2>Three ways to play</h2>
+    </div>
+    <div class="modes">
+      <div class="mode"><span class="tag">Solo</span><h3>Quiz me</h3><p>Pick a source (top tracks, a band, an album, a playlist). Ten songs, six tries each, clip grows with every miss. Also a daily song from your own top 50 with a streak counter.</p></div>
+      <div class="mode"><span class="tag">Online battle</span><h3>Room vs friends</h3><p>Geoquest-style rooms. The host picks the source and shares a 4-letter code. Everyone hears the same clip at the same moment. Faster and earlier guesses score more. Guests need no account.</p></div>
+      <div class="mode"><span class="tag">Party · teams</span><h3>Family night</h3><p>The TV or laptop is the stage and plays the music. Phones scan a QR code and become team buzzers. First team to buzz answers out loud and the host taps right or wrong. Pick a genre, a decade, or your playlist.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="col stack">
+      <span class="eyebrow">Mockups · solo</span>
+      <h2>Pick a source, then guess</h2>
+      <p class="col" style="color:var(--muted)">The app is dark everywhere so it looks right on a TV at night. The clip bar is the main visual: pink is what you've heard, and each segment is a longer clip unlocked by a miss.</p>
+    </div>
+    <div class="stage">
+      <figure>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="app-top"><span class="logo">song<b>er</b></span><span class="avatar">O</span></div>
+          <div class="app-h">What are we<br>playing?</div>
+          <div class="card sel"><span class="art a1"></span><div class="grow"><div class="t">My top tracks</div><div class="s">From your Spotify</div></div></div>
+          <div class="chips"><span class="chip">4 weeks</span><span class="chip on">6 months</span><span class="chip">All time</span></div>
+          <div class="card"><span class="art a2"></span><div class="grow"><div class="t">Liked Songs</div><div class="s">1,284 songs</div></div></div>
+          <div class="card"><span class="art a3"></span><div class="grow"><div class="t">A band</div><div class="s">Radiohead, Arctic Monkeys…</div></div></div>
+          <div class="card"><span class="art a4"></span><div class="grow"><div class="t">A playlist</div><div class="s">32 playlists</div></div></div>
+          <div class="spacer"></div>
+          <div class="row"><span class="btn ghost">Battle</span><span class="btn">Play solo</span></div>
+        </div>
+        <figcaption>Home: source picker</figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="app-top"><span class="sub">Top tracks · 6 mo</span><span class="sub mono">4 / 10</span></div>
+          <div class="clip">
+            <i class="played" style="flex:.5"></i><i class="played" style="flex:1"></i><i class="cur" style="flex:2"></i><i style="flex:4"></i><i style="flex:8"></i><i style="flex:15"></i>
+          </div>
+          <div class="clip-lbl"><span>0:00</span><span>try 3 of 6 · 2s</span><span>0:15</span></div>
+          <div class="play"></div>
+          <div class="try"><span class="x">✕</span><span>Fake Plastic Trees</span><span class="k" style="margin-left:auto">Radiohead</span></div>
+          <div class="try"><span class="k">⤼</span><span class="k">Skipped</span></div>
+          <div class="input">no surp<span class="caret"></span></div>
+          <div class="ac">
+            <div class="hl">No Surprises <small>· Radiohead</small></div>
+            <div>No Sur… (Live) <small>· Radiohead</small></div>
+            <div>Nosurprise <small>· Tame Impala</small></div>
+          </div>
+          <div class="spacer"></div>
+          <div class="row"><span class="btn ghost">Skip +2s</span><span class="btn">Guess</span></div>
+        </div>
+        <figcaption>Solo round: two misses, the 2s clip unlocked</figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="app-top"><span class="sub">Round 4 · solved on try 3</span><span class="sub mono">+4</span></div>
+          <div class="reveal-art"></div>
+          <div style="text-align:center;display:grid;gap:2px"><div class="app-h">No Surprises</div><div class="sub">Radiohead · OK Computer · 1997</div></div>
+          <div class="clip"><i class="played" style="flex:.5"></i><i class="played" style="flex:1"></i><i class="played" style="flex:2"></i><i style="flex:4;background:var(--app-green)"></i><i style="flex:8;background:var(--app-green)"></i><i style="flex:15;background:var(--app-green)"></i></div>
+          <div class="pts">
+            <div>Played 214 times this year<b>#7</b></div>
+            <div>Your streak<b>🔥 3</b></div>
+          </div>
+          <div class="spacer"></div>
+          <div class="btn ghost">▶ Play full song on Spotify</div>
+          <div class="btn">Next song</div>
+        </div>
+        <figcaption>Reveal: the rest of the clip plays and the full song opens on Spotify</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="col stack">
+      <span class="eyebrow">Mockups · online battle</span>
+      <h2>Room code, same clip, race</h2>
+      <p class="col" style="color:var(--muted)">Built on geoquest's room system (Socket.IO, room codes, ready-up). New parts: the server tells every client "start clip at server time T", so everyone hears it together, and you can see who has already got it.</p>
+    </div>
+    <div class="stage">
+      <figure>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="app-top"><span class="logo">song<b>er</b></span><span class="sub">Lobby</span></div>
+          <div class="sub" style="text-align:center">Room code</div>
+          <div class="code-big">K7QF</div>
+          <div class="card"><span class="qr"></span><div class="grow"><div class="t">songer.omersher.com</div><div class="s">Scan or type the code. No Spotify account needed.</div></div></div>
+          <div class="card" style="display:block">
+            <div class="pl"><span class="dot" style="background:var(--app-pink)">O</span>Omer <span class="sub">host</span><span class="ready">READY</span></div>
+            <div class="pl"><span class="dot" style="background:var(--app-yellow)">D</span>Dana<span class="ready">READY</span></div>
+            <div class="pl"><span class="dot" style="background:var(--app-cyan)">Y</span>Yoni<span class="wait">joining…</span></div>
+          </div>
+          <div class="chips"><span class="chip on">Arctic Monkeys · all albums</span><span class="chip">10 songs</span><span class="chip">20s / round</span></div>
+          <div class="spacer"></div>
+          <div class="btn">Start battle</div>
+        </div>
+        <figcaption>Lobby: the host's library, guests join by code</figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="timer"><div class="ring"><span>12</span></div><div class="grow"><div class="t" style="font-weight:600">Round 6 / 10</div><div class="sub">Clip grows every 4s</div></div><span class="sub mono">2,840</span></div>
+          <div class="clip"><i class="played" style="flex:.5"></i><i class="played" style="flex:1"></i><i class="cur" style="flex:2"></i><i style="flex:4"></i><i style="flex:8"></i><i style="flex:15"></i></div>
+          <div class="card" style="display:block">
+            <div class="feed">
+              <div><span class="dot" style="background:var(--app-yellow)">D</span>Dana<span class="ok">✓ 3.1s</span></div>
+              <div><span class="dot" style="background:var(--app-cyan)">Y</span>Yoni<span class="no">1 miss</span></div>
+            </div>
+          </div>
+          <div class="input">do i wan<span class="caret"></span></div>
+          <div class="ac">
+            <div class="hl">Do I Wanna Know? <small>· AM</small></div>
+            <div>Why'd You Only Call Me… <small>· AM</small></div>
+          </div>
+          <div class="spacer"></div>
+          <div class="btn">Lock in</div>
+        </div>
+        <figcaption>Battle round: live feed of who got it, without spoiling the answer</figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="app-top"><span class="sub">Round 6 result</span><span class="sub mono">4 left</span></div>
+          <div class="reveal-art" style="background:conic-gradient(from 90deg,#14112b,#6b4cf6,#ff3d7f,#14112b)"></div>
+          <div style="text-align:center;display:grid;gap:2px"><div class="app-h">Do I Wanna Know?</div><div class="sub">Arctic Monkeys · AM</div></div>
+          <div class="pts">
+            <div><span class="dot" style="background:var(--app-yellow)">D</span>Dana · try 2 · 3.1s<b>+860</b></div>
+            <div><span class="dot" style="background:var(--app-pink)">O</span>You · try 3 · 7.4s<b>+610</b></div>
+            <div><span class="dot" style="background:var(--app-cyan)">Y</span>Yoni · missed<b>+0</b></div>
+          </div>
+          <div class="sub" style="text-align:center">Leader: Dana 3,700 · You 3,450</div>
+          <div class="spacer"></div>
+          <div class="btn yellow">Next round in 5…</div>
+        </div>
+        <figcaption>Round result: points, then auto-advance</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="col stack">
+      <span class="eyebrow">Mockups · party mode</span>
+      <h2>TV is the stage, phones are buzzers</h2>
+      <p class="col" style="color:var(--muted)">Built for a family gathering: one speaker, one screen, everyone in the same room. Nobody types. The host (you, on the laptop) controls the game and judges answers. Teams can mix ages, so it works when grandma only knows the 70s and the kids only know TikTok.</p>
+    </div>
+    <div class="stage">
+      <figure>
+        <div class="tv">
+          <div class="tv-left">
+            <span class="round">Round 7 of 15 · 4s clip</span>
+            <div class="pack">80s Rock<br>Classics</div>
+            <div class="eq" aria-hidden="true"><i style="height:40%"></i><i style="height:75%"></i><i style="height:55%"></i><i style="height:90%"></i><i style="height:35%"></i><i style="height:65%"></i><i style="height:50%"></i><i style="height:80%"></i><i style="height:30%"></i><i style="height:60%"></i></div>
+            <div class="buzzed"><span class="round" style="color:var(--app-cyan)">Buzzed first · 1.8s</span><b>Team Savta</b><span style="font-size:12px;color:var(--app-muted)">Say the song and the artist out loud</span></div>
+            <div class="row" style="gap:8px"><span class="btn" style="background:var(--app-green);color:#14112b;padding:8px">✓ Song +3</span><span class="btn" style="background:var(--app-card-2);padding:8px">Artist +1</span><span class="btn" style="background:var(--app-red);padding:8px">✕ Steal</span></div>
+          </div>
+          <div class="teams">
+            <span class="round">Scores</span>
+            <div class="team lead"><span class="sw" style="background:var(--app-cyan)"></span><div><div class="nm">Team Savta</div><div class="mb">Savta, Noa, Ido</div></div><span class="sc">14</span></div>
+            <div class="team"><span class="sw" style="background:var(--app-pink)"></span><div><div class="nm">The Cousins</div><div class="mb">Dana, Yoni, Maya</div></div><span class="sc">11</span></div>
+            <div class="team"><span class="sw" style="background:var(--app-yellow)"></span><div><div class="nm">Abba &amp; Co</div><div class="mb">Abba, Omer, Lior</div></div><span class="sc">9</span></div>
+          </div>
+        </div>
+        <figcaption>TV stage: the host judges the buzzed answer; the other teams can steal on a miss</figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="app-top"><span class="sub">Team Savta</span><span class="sub mono">14 pts</span></div>
+          <div class="sub" style="text-align:center">Round 7 · listening…</div>
+          <div class="spacer"></div>
+          <div class="buzz">BUZZ</div>
+          <div class="spacer"></div>
+          <div class="sub" style="text-align:center">Wrong buzz = your team sits out this song</div>
+        </div>
+        <figcaption>Phone buzzer: one big target, team colour</figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="app-top"><span class="logo">song<b>er</b></span><span class="sub">Party setup</span></div>
+          <div class="app-h">Pick the music</div>
+          <div class="chips">
+            <span class="chip">My playlists</span><span class="chip on">80s Rock</span><span class="chip">90s Pop</span><span class="chip">Israeli Classics</span><span class="chip">Mizrahi</span><span class="chip">2010s Hits</span><span class="chip">Disney</span><span class="chip">Mix all</span>
+          </div>
+          <div class="app-h" style="font-size:15px">Teams</div>
+          <div class="card"><span class="dot" style="background:var(--app-cyan)">3</span><div class="grow"><div class="t">Team Savta</div></div></div>
+          <div class="card"><span class="dot" style="background:var(--app-pink)">3</span><div class="grow"><div class="t">The Cousins</div></div></div>
+          <div class="card"><span class="dot" style="background:var(--app-yellow)">3</span><div class="grow"><div class="t">Abba &amp; Co</div></div></div>
+          <div class="chips"><span class="chip">10</span><span class="chip on">15 songs</span><span class="chip">25</span><span class="chip on">Buzzer</span><span class="chip">Type answers</span></div>
+          <div class="spacer"></div>
+          <div class="btn">Show join QR on TV</div>
+        </div>
+        <figcaption>Party setup on the host's phone or laptop</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="col">
+    <span class="eyebrow">Other people</span>
+    <h2>Who needs what</h2>
+    <p>Short answer: only you need Spotify. Friends and family just open a link.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Who</th><th>Spotify account?</th><th>What they can do</th></tr></thead>
+      <tbody>
+        <tr><td><b>You (host)</b></td><td class="y">Yes, Premium</td><td>Every mode, using your library. The real-intro player works on your laptop/TV.</td></tr>
+        <tr><td><b>Up to 4 "linked" friends</b></td><td class="y">Yes, any plan</td><td>Same as you: solo on their own library, host their own rooms. You add their Spotify email in the dashboard (5-account cap). Unlocks a "Whose song is it?" battle that mixes everyone's top tracks.</td></tr>
+        <tr><td><b>Guests</b></td><td class="n">No</td><td>Join rooms and parties with a code and a nickname, play on Deezer clips. Optional: pick a guest name once so their scores keep.</td></tr>
+      </tbody>
+    </table></div>
+    <p style="color:var(--muted);font-size:.93rem">Fairness rule: in online battles everyone hears the same Deezer clip, including you. Mixing "Spotify intro for me, Deezer chorus for you" would give you an advantage.</p>
+  </section>
+
+  <section class="col">
+    <span class="eyebrow">Scoring</span>
+    <h2>Points</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Mode</th><th>Rule</th></tr></thead>
+      <tbody>
+        <tr><td>Solo</td><td>Solved on try 1–6 earns 6, 5, 4, 3, 2, 1 points. A daily streak counts consecutive days solved.</td></tr>
+        <tr><td>Battle</td><td><span class="mono">base × try factor + speed bonus</span>: base 1000, try factor 1.0 / .8 / .6 / .45 / .3 / .2, speed bonus up to 200 shrinking over the round. Wrong guesses cost nothing except time; the clip grows on a shared clock.</td></tr>
+        <tr><td>Party</td><td>Song +3, artist +1. A wrong buzz locks that team out for the song and the others may steal. The host can override any call.</td></tr>
+      </tbody>
+    </table></div>
+    <p style="color:var(--muted);font-size:.93rem">Answer matching ignores "Remastered 2011", "- Live", "feat. X", punctuation and case, and accepts small typos. Autocomplete suggests from the round's pool plus decoys from the same artists, so the list never gives away the answer.</p>
+  </section>
+
+  <section>
+    <div class="col stack">
+      <span class="eyebrow">Architecture</span>
+      <h2>How it runs on the homeserver</h2>
+      <p class="col" style="color:var(--muted)">Same stack as geoquest (React + Vite + Tailwind, Node + Express + Socket.IO), plus SQLite for tokens and the track cache. One container serves both the API and the built frontend, on the existing <code>proxy</code> network behind Nginx Proxy Manager.</p>
+    </div>
+    <div class="arch">
+      <svg viewBox="0 0 900 330" role="img" aria-label="Architecture: browsers connect via Nginx Proxy Manager to the Songer container, which talks to Spotify and Deezer">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="ara" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow a" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <!-- clients -->
+        <rect class="box" x="10" y="30" width="170" height="60" rx="10"/><text x="24" y="56" font-weight="600" font-size="14">Host laptop / TV</text><text class="lbl" x="24" y="76">React app + Spotify SDK</text>
+        <rect class="box" x="10" y="135" width="170" height="60" rx="10"/><text x="24" y="161" font-weight="600" font-size="14">Friends' phones</text><text class="lbl" x="24" y="181">React app, guest</text>
+        <rect class="box" x="10" y="240" width="170" height="60" rx="10"/><text x="24" y="266" font-weight="600" font-size="14">Party buzzers</text><text class="lbl" x="24" y="286">/join?code=…</text>
+        <!-- npm -->
+        <rect class="box" x="235" y="125" width="150" height="80" rx="10"/><text x="249" y="153" font-weight="600" font-size="14">Nginx Proxy Mgr</text><text class="lbl" x="249" y="173">songer.omersher.com</text><text class="lbl" x="249" y="190">TLS + websockets</text>
+        <path class="ln" d="M180 60 C210 60 210 150 235 150" marker-end="url(#ar)"/>
+        <path class="ln" d="M180 165 L235 165" marker-end="url(#ar)"/>
+        <path class="ln" d="M180 270 C210 270 210 180 235 180" marker-end="url(#ar)"/>
+        <!-- container -->
+        <rect class="box hot" x="440" y="20" width="250" height="290" rx="12"/>
+        <text x="456" y="46" font-weight="700" font-size="15">songer container</text>
+        <text class="lbl" x="456" y="64">node:22-alpine · port 5100</text>
+        <rect class="box" x="456" y="80" width="218" height="44" rx="8"/><text x="468" y="100" font-size="13" font-weight="600">Express API</text><text class="lbl" x="468" y="116">/auth /library /clip</text>
+        <rect class="box" x="456" y="134" width="218" height="44" rx="8"/><text x="468" y="154" font-size="13" font-weight="600">Socket.IO game engine</text><text class="lbl" x="468" y="170">rooms, clock sync, scoring</text>
+        <rect class="box" x="456" y="188" width="218" height="44" rx="8"/><text x="468" y="208" font-size="13" font-weight="600">Clip service (ffmpeg)</text><text class="lbl" x="468" y="224">trims 0.5s…15s segments</text>
+        <rect class="box" x="456" y="242" width="218" height="52" rx="8"/><text x="468" y="262" font-size="13" font-weight="600">SQLite volume</text><text class="lbl" x="468" y="280">tokens · track cache · scores</text>
+        <path class="ln a" d="M385 165 L440 165" marker-end="url(#ara)"/>
+        <!-- external -->
+        <rect class="box ext" x="745" y="50" width="145" height="70" rx="10"/><text x="759" y="78" font-weight="600" font-size="14">Spotify API</text><text class="lbl" x="759" y="98">library, OAuth</text>
+        <rect class="box ext" x="745" y="200" width="145" height="70" rx="10"/><text x="759" y="228" font-weight="600" font-size="14">Deezer API</text><text class="lbl" x="759" y="248">30s previews, packs</text>
+        <path class="ln" d="M690 100 L745 88" marker-end="url(#ar)"/>
+        <path class="ln" d="M690 215 L745 232" marker-end="url(#ar)"/>
+      </svg>
+    </div>
+    <div class="col stack">
+      <h3>Details that matter</h3>
+      <ul class="clean">
+        <li><b>No cheating via dev tools.</b> The server never sends the title before the reveal. Clips come from opaque URLs like <code>/clip/r8f2/3</code> and are trimmed server-side, so the browser only ever holds the seconds you've unlocked.</li>
+        <li><b>Synced start.</b> Clients measure their offset from the server clock (ping) and preload the clip; the server says "play at T+1.5s". Everyone hears it within ~50 ms.</li>
+        <li><b>Deezer matching.</b> Search by title + artist, check that the duration is within 3s, cache the result. Tracks with no match get dropped from the pool, and the pool builder over-fetches to compensate.</li>
+        <li><b>Spotify redirect URI</b> must be HTTPS: <code>https://songer.omersher.com/api/auth/callback</code>. For local dev, Spotify accepts <code>http://127.0.0.1:5100/…</code> (not <code>localhost</code>).</li>
+        <li><b>Secrets</b> live in a <code>stack.env</code> kept out of git (your stack review flagged this): <code>SPOTIFY_CLIENT_ID</code>, <code>SPOTIFY_CLIENT_SECRET</code>, <code>TOKEN_ENC_KEY</code>, <code>SESSION_SECRET</code>.</li>
+        <li><b>CI</b> follows geoquest: GitHub Actions builds <code>ghcr.io/omer182/songer</code>; Portainer pulls it. Pin the tag this time instead of <code>:latest</code>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="col stack">
+      <span class="eyebrow">Build order</span>
+      <h2>Phases</h2>
+      <p class="col" style="color:var(--muted)">Each phase ends with something you can actually play.</p>
+    </div>
+    <div class="phases">
+      <div class="phase"><span class="n">PHASE 1 · SOLO MVP</span><h3>Play your own library</h3><ul><li>Repo scaffold (geoquest layout), Docker, CI</li><li>Spotify login + encrypted token store</li><li>Pool builder: top tracks, liked, playlist, band, album</li><li>Deezer matcher + clip trimming</li><li>Solo game + reveal + daily song</li></ul></div>
+      <div class="phase"><span class="n">PHASE 2 · ONLINE BATTLE</span><h3>Rooms with friends</h3><ul><li>Port geoquest RoomManager</li><li>Clock sync + synced clip start</li><li>Shared clip timeline, live feed</li><li>Scoring, results, rematch</li></ul></div>
+      <div class="phase"><span class="n">PHASE 3 · PARTY MODE</span><h3>Family night</h3><ul><li>TV stage view + QR join</li><li>Teams, phone buzzers, lockouts, steals</li><li>Host judge controls</li><li>Deezer genre/decade packs</li></ul></div>
+      <div class="phase"><span class="n">PHASE 4 · EXTRAS</span><h3>Polish</h3><ul><li>Real-intro mode via Spotify SDK (solo + TV)</li><li>"Whose song is it?" with linked friends</li><li>Match history, stats, PWA install</li><li>Hebrew UI + RTL</li></ul></div>
+    </div>
+  </section>
+
+  <section class="col">
+    <span class="eyebrow">Your call</span>
+    <h2>Decisions before I start</h2>
+    <div class="qs">
+      <div class="q"><h3>Are you OK with the Spotify policy risk?</h3><p>Personal use, max 5 accounts, never public. Worst case Spotify disables the Client ID and you fall back to Deezer packs and playlists. If not, I'd swap the library source for Last.fm (if you scrobble) or Deezer-only.</p></div>
+      <div class="q"><h3>Clip start: intro or "somewhere in the song"?</h3><p>Deezer previews are a 30s slice, usually from the middle or chorus. True Songless plays the intro, which needs the Spotify SDK and so only works on a Premium-logged-in laptop or TV. My suggestion: Deezer by default, intro mode as a solo/TV option.</p></div>
+      <div class="q"><h3>Name and subdomain</h3><p>Working name "Songer" (you already have an empty <code>Projects/songer</code> folder) at <code>songer.omersher.com</code>.</p></div>
+      <div class="q"><h3>Language</h3><p>English only to start, or Hebrew + RTL from day one for the family nights?</p></div>
+    </div>
+  </section>
+
+  <section class="col sources">
+    <span class="eyebrow">Sources</span>
+    <ul>
+      <li><a href="https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide">Spotify: February 2026 Dev Mode migration guide</a></li>
+      <li><a href="https://techcrunch.com/2026/02/06/spotify-changes-developer-mode-api-to-require-premium-accounts-limits-test-users/">TechCrunch: Spotify requires Premium, limits test users</a></li>
+      <li><a href="https://developer.spotify.com/policy/">Spotify Developer Policy</a> (section III, prohibited applications)</li>
+      <li><a href="https://community.spotify.com/t5/Spotify-for-Developers/What-is-the-reason-for-not-allowing-games-and-quizzes/m-p/6219736">Spotify community: games and quizzes not allowed</a></li>
+      <li><a href="https://lessgames.com/songless">Songless</a> (the inspiration)</li>
+    </ul>
+  </section>
+
+</div>

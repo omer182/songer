@@ -1,0 +1,450 @@
+<title>Songer Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&family=Rubik:wght@400;500;700&display=swap">
+<style>
+/* Layout: a top bar with a Solo/Party switch. Solo = one centered app column (the laptop web app).
+   Party = a 16:9 TV stage with host controls, and a row of team phones beside/below it. Single dark look by choice. */
+:root{
+  color-scheme:dark;
+  --bg:#0f0c22; --panel:#17132f; --card:#221d44; --card-2:#2d2759; --line:#352e66;
+  --fg:#f3f0ff; --muted:#a49dcc; --dim:#6f68a0;
+  --pink:#ff3d7f; --yellow:#ffd23f; --cyan:#3fd8ff; --green:#4ade9b; --red:#ff5d5d; --spotify:#1ed760;
+  --display:"Bricolage Grotesque","Rubik","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Rubik","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{margin:0;font:15px/1.45 var(--body)}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:14px 60px}
+
+/* top bar */
+.bar{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between;padding-block:6px 18px}
+.logo{font:800 26px var(--display);letter-spacing:-.03em}
+.logo b{color:var(--pink)}
+.seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px}
+.seg button{padding:8px 20px;border-radius:999px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--pink);color:#fff}
+.note{font:500 12px var(--mono);color:var(--muted);max-width:420px}
+.note b{color:var(--yellow);font-weight:700}
+
+/* generic */
+.h1{font:800 28px/1.1 var(--display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+.h2{font:700 18px/1.2 var(--display);margin:0}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.mono{font-family:var(--mono)}
+.row{display:flex;gap:10px;align-items:center}
+.row.wrapr{flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+.stack{display:grid;gap:12px}
+.btn{background:var(--pink);color:#fff;border-radius:14px;padding:12px 18px;font:700 15px var(--display);letter-spacing:.01em;text-align:center;transition:transform .08s,filter .15s}
+.btn:hover{filter:brightness(1.1)}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.4;cursor:not-allowed;filter:none;transform:none}
+.btn.ghost{background:transparent;box-shadow:inset 0 0 0 1.5px var(--card-2);color:var(--fg)}
+.btn.yellow{background:var(--yellow);color:#14112b}
+.btn.green{background:var(--green);color:#10241a}
+.btn.red{background:var(--red);color:#2b0c0c}
+.btn.sm{padding:8px 12px;font-size:13px;border-radius:11px}
+.chip{background:var(--card-2);border-radius:999px;padding:6px 12px;font-size:13px}
+.chip[aria-pressed="true"]{background:var(--pink);color:#fff;font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:7px;background:var(--card);border-radius:999px;padding:5px 11px 5px 9px;font-size:12.5px}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--spotify)}
+.kbd{font:700 11px var(--mono);background:var(--card-2);border-radius:5px;padding:1px 6px;color:var(--muted)}
+.art{border-radius:12px;flex:none;position:relative;overflow:hidden}
+.art::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 30% 25%,#ffffff33,transparent 45%)}
+[dir="auto"]{unicode-bidi:plaintext}
+
+/* ---------- SOLO ---------- */
+.solo{max-width:460px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:22px;display:grid;gap:16px;min-height:640px;align-content:start}
+.src{background:var(--card);border-radius:16px;padding:12px 14px;display:grid;gap:10px;text-align:left;width:100%}
+.src[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--pink)}
+.src .t{font-weight:600}
+.src .s{color:var(--muted);font-size:12.5px}
+.topline{display:flex;align-items:center;gap:10px;font-size:13px}
+.back{color:var(--muted);padding:4px 0}
+.score{margin-left:auto;font:700 13px var(--mono);color:var(--yellow)}
+
+.clip{position:relative;display:flex;gap:3px;height:34px}
+.clip .sg{background:var(--card-2);border-radius:5px;transition:background .2s}
+.clip .sg.on{background:var(--pink)}
+.clip .sg.rest{background:color-mix(in srgb,var(--green) 55%,var(--card-2))}
+.clip .ph{position:absolute;top:-4px;bottom:-4px;width:2px;background:#fff;border-radius:2px;left:0;opacity:0;box-shadow:0 0 8px #fff}
+.clip-lbl{display:flex;justify-content:space-between;font:500 11px var(--mono);color:var(--dim)}
+.playbtn{width:76px;height:76px;border-radius:50%;background:var(--yellow);display:grid;place-items:center;margin:2px auto;box-shadow:0 8px 24px -8px var(--yellow)}
+.playbtn::after{content:"";border-left:22px solid #14112b;border-top:13px solid transparent;border-bottom:13px solid transparent;margin-left:6px}
+.playbtn.playing::after{border:0;width:22px;height:24px;margin:0;background:linear-gradient(90deg,#14112b 0 8px,transparent 8px 14px,#14112b 14px)}
+.stagetxt{text-align:center;font:500 12.5px var(--mono);color:var(--muted)}
+.tries{display:grid;gap:6px}
+.try{display:flex;gap:9px;align-items:center;min-height:34px;padding:6px 11px;border-radius:10px;background:var(--card);font-size:13.5px}
+.try.empty{background:transparent;box-shadow:inset 0 0 0 1px var(--card-2)}
+.try .x{color:var(--red);font-weight:700}
+.try .k{color:var(--muted)}
+.try .ok{color:var(--green);font-weight:700}
+.guess{position:relative}
+.guess input{width:100%;background:var(--card);border:0;border-radius:13px;padding:13px 14px;color:var(--fg);font:inherit;box-shadow:inset 0 0 0 1.5px var(--card-2)}
+.guess input:focus{box-shadow:inset 0 0 0 1.5px var(--cyan);outline:none}
+.ac{position:absolute;left:0;right:0;bottom:calc(100% + 6px);background:var(--card-2);border-radius:13px;overflow:hidden;box-shadow:0 -10px 30px -10px #000a;z-index:5}
+.ac button{display:flex;gap:8px;width:100%;text-align:left;padding:9px 13px;border-bottom:1px solid var(--card)}
+.ac button:last-child{border-bottom:0}
+.ac button:hover,.ac button.hl{background:color-mix(in srgb,var(--cyan) 20%,var(--card-2))}
+.ac small{color:var(--muted)}
+.reveal{display:grid;gap:10px;justify-items:center;text-align:center}
+.result{font:700 14px var(--mono);padding:6px 12px;border-radius:999px}
+.result.win{background:color-mix(in srgb,var(--green) 18%,transparent);color:var(--green)}
+.result.lose{background:color-mix(in srgb,var(--red) 18%,transparent);color:var(--red)}
+.grid-sum{display:grid;gap:7px}
+.sumrow{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:12px;padding:8px 10px;font-size:13.5px}
+.sq{display:flex;gap:3px}
+.sq i{width:11px;height:11px;border-radius:3px;background:var(--card-2)}
+.sq i.m{background:var(--red)}.sq i.s{background:var(--dim)}.sq i.g{background:var(--green)}
+.big-score{font:800 52px/1 var(--display);color:var(--yellow);text-align:center}
+
+/* ---------- PARTY ---------- */
+.party{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:22px;align-items:start}
+@media (max-width:1060px){.party{grid-template-columns:1fr}}
+.stagecol{display:grid;gap:12px;min-width:0}
+.tv{aspect-ratio:16/9;width:100%;background:radial-gradient(120% 90% at 0% 0%,#231b52 0,#120e2a 60%);border-radius:16px;box-shadow:0 0 0 10px #07051a,0 0 0 11px #2a2450,0 30px 60px -20px #000;padding:clamp(14px,2.6vw,30px);display:grid;grid-template-columns:1.25fr 1fr;gap:clamp(12px,2vw,26px);overflow:hidden;position:relative}
+@media (max-width:700px){.tv{aspect-ratio:auto;grid-template-columns:1fr}}
+.tv-l{display:flex;flex-direction:column;gap:12px;min-width:0;justify-content:center}
+.tv-r{display:flex;flex-direction:column;gap:8px;justify-content:center;min-width:0}
+.eyebrow{font:700 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.tv .big{font:800 clamp(24px,3.4vw,42px)/1.02 var(--display);letter-spacing:-.02em}
+.eq{display:flex;gap:5px;align-items:flex-end;height:64px}
+.eq i{flex:1;border-radius:4px;background:var(--pink);height:12%;transition:height .12s}
+.eq.on i{animation:eq .5s ease-in-out infinite alternate}
+.eq.on i:nth-child(2n){animation-duration:.38s}.eq.on i:nth-child(3n){animation-duration:.62s}.eq.on i:nth-child(5n){animation-duration:.44s}
+@keyframes eq{from{height:15%}to{height:95%}}
+.team{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;background:#ffffff0d;border-radius:12px;padding:8px 12px;transition:transform .2s}
+.team .sw{width:10px;height:36px;border-radius:4px}
+.team .nm{font:700 15px var(--display)}
+.team .mb{color:var(--muted);font-size:11.5px;min-height:1em}
+.team .sc{font:800 26px var(--mono)}
+.team.lead{box-shadow:inset 0 0 0 2px var(--yellow)}
+.team.locked{opacity:.4}
+.buzzcard{border-radius:16px;padding:16px 18px;display:grid;gap:4px;animation:pop .35s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+.buzzcard b{font:800 clamp(24px,3.2vw,38px)/1 var(--display)}
+.qr{width:clamp(90px,11vw,130px);aspect-ratio:1;border-radius:10px;background:#fff;padding:8px;flex:none}
+.qr div{width:100%;height:100%;background:
+  conic-gradient(from 90deg at 22% 22%,#14112b 25%,transparent 0) 0 0/50% 50%,
+  repeating-linear-gradient(90deg,#14112b 0 7%,transparent 7% 12%),repeating-linear-gradient(0deg,#14112b 0 6%,#fff 6% 13%);border-radius:3px}
+.code{font:800 clamp(30px,4vw,48px) var(--mono);letter-spacing:.16em;color:var(--yellow)}
+.podium{display:flex;gap:10px;align-items:flex-end;height:60%}
+.podium div{flex:1;border-radius:12px 12px 4px 4px;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;padding-top:10px;gap:2px;font:700 13px var(--display)}
+.podium span{font:800 22px var(--mono)}
+.toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:var(--card-2);padding:8px 14px;border-radius:999px;font-size:13px;animation:pop .3s}
+.host{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.host .lbl{font:700 11px var(--mono);letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-right:4px}
+.setup{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:14px}
+
+.phones{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+@media (min-width:1061px){.phones{flex-direction:column;flex-wrap:nowrap}}
+.phonecap{font:500 11px var(--mono);color:var(--dim);text-align:center}
+.phone{width:200px;height:330px;background:var(--bg);border-radius:28px;box-shadow:0 0 0 6px #07051a,0 0 0 7px #2a2450;padding:12px;display:flex;flex-direction:column;gap:8px;text-align:center;font-size:12.5px;overflow:hidden}
+@media (min-width:1061px){.phone{height:250px}}
+.phone .hd{display:flex;justify-content:space-between;align-items:center;font-weight:600}
+.phone .hd span:last-child{font-family:var(--mono)}
+.buzz{width:128px;height:128px;border-radius:50%;margin:auto;display:grid;place-items:center;font:800 24px var(--display);color:#14112b;transition:transform .08s}
+.buzz:active{transform:translateY(4px)}
+.buzz:disabled{filter:grayscale(1) brightness(.5);cursor:not-allowed}
+@media (min-width:1061px){.buzz{width:110px;height:110px}}
+.ph-mid{margin:auto;display:grid;gap:6px;justify-items:center}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="bar">
+    <div class="row" style="gap:16px"><span class="logo">song<b>er</b></span>
+      <div class="seg" role="group" aria-label="Mode">
+        <button id="tabSolo" aria-pressed="true">Solo</button>
+        <button id="tabParty" aria-pressed="false">Party</button>
+      </div>
+    </div>
+    <p class="note"><b>Prototype.</b> Every button works. A synth tune stands in for the song; the real app plays the actual track from 0:00 through your Spotify. Turn your sound on.</p>
+  </div>
+  <section id="soloView"><div class="solo" id="solo"></div></section>
+  <section id="partyView" hidden></section>
+</div>
+
+<script>
+/* ---------------- data ---------------- */
+const G=[["#ff3d7f","#6b4cf6"],["#ffd23f","#ff6a3d"],["#3fd8ff","#4ade9b"],["#6b4cf6","#14112b"],["#ff6a3d","#ff3d7f"],["#4ade9b","#1f6f8b"],["#f5f0ff","#a49dcc"],["#ff3d7f","#ffd23f"]];
+let _id=0;const S=(title,artist,album,year,tags)=>({id:++_id,title,artist,album,year,tags,g:G[_id%G.length]});
+const LIB=[
+ S("All The Small Things","blink-182","Enema of the State",1999,["top","liked","band:blink","pl:rock"]),
+ S("I Miss You","blink-182","blink-182",2003,["top","band:blink","pl:rock"]),
+ S("What's My Age Again?","blink-182","Enema of the State",1999,["liked","band:blink","pl:rock"]),
+ S("First Date","blink-182","Take Off Your Pants and Jacket",2001,["band:blink","pl:rock"]),
+ S("Adam's Song","blink-182","Enema of the State",1999,["band:blink"]),
+ S("The Rock Show","blink-182","Take Off Your Pants and Jacket",2001,["band:blink","liked"]),
+ S("Feeling This","blink-182","blink-182",2003,["band:blink"]),
+ S("Dammit","blink-182","Dude Ranch",1997,["band:blink","top"]),
+ S("Do I Wanna Know?","Arctic Monkeys","AM",2013,["top","liked","band:am"]),
+ S("R U Mine?","Arctic Monkeys","AM",2013,["band:am","top"]),
+ S("505","Arctic Monkeys","Favourite Worst Nightmare",2007,["band:am","liked"]),
+ S("I Bet You Look Good on the Dancefloor","Arctic Monkeys","Whatever People Say I Am, That's What I'm Not",2006,["band:am","pl:rock"]),
+ S("Fluorescent Adolescent","Arctic Monkeys","Favourite Worst Nightmare",2007,["band:am"]),
+ S("Why'd You Only Call Me When You're High?","Arctic Monkeys","AM",2013,["band:am","liked"]),
+ S("Creep","Radiohead","Pablo Honey",1993,["band:rh","top"]),
+ S("Karma Police","Radiohead","OK Computer",1997,["band:rh","liked"]),
+ S("No Surprises","Radiohead","OK Computer",1997,["band:rh","top","liked"]),
+ S("Fake Plastic Trees","Radiohead","The Bends",1995,["band:rh"]),
+ S("High and Dry","Radiohead","The Bends",1995,["band:rh"]),
+ S("Paranoid Android","Radiohead","OK Computer",1997,["band:rh"]),
+ S("Mr. Brightside","The Killers","Hot Fuss",2004,["liked","top","pl:rock"]),
+ S("Seven Nation Army","The White Stripes","Elephant",2003,["liked","pl:rock"]),
+ S("Take Me Out","Franz Ferdinand","Franz Ferdinand",2004,["liked","pl:rock"]),
+ S("Last Nite","The Strokes","Is This It",2001,["top","pl:rock"]),
+ S("לא עוזב את העיר","שלמה ארצי","",0,["pl:il80","liked"]),
+ S("זמנך עבר","אהוד בנאי","",0,["pl:il80"]),
+ S("במקום הכי נמוך בתל אביב","אסתר שמיר","",0,["pl:il80"]),
+ S("גיבור גדול","סי היימן","",0,["pl:il80"]),
+ S("אנטארקטיקה","קורין אלאל","",0,["pl:il80"]),
+ S("עוף גוזל","אריק איינשטיין","",0,["pl:il80","top"]),
+ S("לא רוצה לזמביה","עופר אקרליך","",0,["pl:il80"]),
+ S("מלנכולי","החברים של נטשה","",0,["pl:il80"]),
+ S("מי שמאמין","אייל גולן","",0,["pl:il00"]),
+ S("תגידו לה","דודו אהרון","",0,["pl:il00","top"]),
+ S("כסף ואלכוהול","דודו אהרון","",0,["pl:il00"]),
+ S("שיר נחמה","הדג נחש","",0,["pl:il00","liked"]),
+ S("כל יום מחדש","התקווה 6","",0,["pl:il00"]),
+ S("אורות","אברהם טל","",0,["pl:il00"]),
+ S("Move It","Balkan Beat Box","Blue Eyed Black Boy",2010,["pl:il00"]),
+];
+const STAGES=[0.5,1,2,4,8,15];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const artCss=s=>`background:linear-gradient(135deg,${s.g[0]},${s.g[1]})`;
+const meta=s=>s.album?`${esc(s.album)}${s.year?" · "+s.year:""}`:"Israeli pop & rock";
+const norm=s=>s.toLowerCase().replace(/[^\p{L}\p{N} ]/gu,"").trim();
+
+/* ---------------- synth (stands in for Spotify playback) ---------------- */
+let ctx=null,nodes=[],play={start:0,from:0,len:0,on:false,timer:0,onEnd:null};
+function ensureCtx(){try{if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==="suspended")ctx.resume();}catch(e){}return ctx}
+function rng(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}}
+const melCache={};
+function melody(song){
+  if(melCache[song.id])return melCache[song.id];
+  const r=rng(song.id*7919+13),root=50+Math.floor(r()*10),beat=60/(96+Math.floor(r()*56));
+  const scale=[0,2,4,7,9,12,14,16,19],wave=["square","triangle","sawtooth"][Math.floor(r()*3)];
+  const motif=[];for(let i=0;i<8;i++)motif.push({d:[.5,.5,1,.5,.25][Math.floor(r()*5)],n:scale[Math.floor(r()*scale.length)],rest:r()<.12});
+  const notes=[],bass=[];let t=0,k=0;
+  while(t<16){const m=motif[k%8],shift=Math.floor(k/16)%2?5:0,d=m.d*beat;if(!m.rest)notes.push({t,d:d*.9,m:root+12+m.n+(k%8===7?shift:0)});t+=d;k++}
+  const prog=[0,5,7,3];for(let b=0;b*beat<16;b++)bass.push({t:b*beat,d:beat*.85,m:root-12+prog[Math.floor(b/4)%4]});
+  return melCache[song.id]={notes,bass,wave};
+}
+const hz=m=>440*Math.pow(2,(m-69)/12);
+function stopAudio(){nodes.forEach(n=>{try{n.stop()}catch(e){}});nodes=[];clearTimeout(play.timer);play.on=false;}
+function playClip(song,len,from=0,onEnd){
+  stopAudio();const c=ensureCtx();if(!c)return;
+  const now=c.currentTime+.06,end=from+len,mel=melody(song);
+  const master=c.createGain();master.gain.value=.11;const lp=c.createBiquadFilter();lp.type="lowpass";lp.frequency.value=2600;master.connect(lp).connect(c.destination);
+  const voice=(list,type,vol)=>list.forEach(n=>{if(n.t+n.d<=from||n.t>=end)return;
+    const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.value=hz(n.m);
+    const st=now+Math.max(0,n.t-from),en=now+Math.min(n.t+n.d,end)-from;
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(vol,st+.01);g.gain.setValueAtTime(vol,Math.max(st+.011,en-.03));g.gain.linearRampToValueAtTime(0,en);
+    o.connect(g).connect(master);o.start(st);o.stop(en+.02);nodes.push(o)});
+  voice(mel.notes,mel.wave,.55);voice(mel.bass,"triangle",.8);
+  play={start:now,from,len,on:true,onEnd,timer:setTimeout(()=>{play.on=false;onEnd&&onEnd()},len*1000+80)};
+}
+function playPos(){return play.on&&ctx?Math.min(play.from+play.len,play.from+Math.max(0,ctx.currentTime-play.start)):null}
+function sfx(kind){const c=ensureCtx();if(!c)return;const o=c.createOscillator(),g=c.createGain();o.type="square";
+  const t=c.currentTime;const f={buzz:[220,110],ok:[523,1046],bad:[200,90]}[kind];o.frequency.setValueAtTime(f[0],t);o.frequency.exponentialRampToValueAtTime(f[1],t+.25);
+  g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.connect(g).connect(c.destination);o.start(t);o.stop(t+.32)}
+/* playhead animation for whichever clip bar is on screen */
+(function tick(){const pos=playPos();document.querySelectorAll(".clip .ph").forEach(ph=>{if(pos==null){ph.style.opacity=0}else{ph.style.opacity=1;ph.style.left=`calc(${pos/15*100}% - 1px)`}});
+  document.querySelectorAll(".eq").forEach(e=>e.classList.toggle("on",pos!=null));
+  document.querySelectorAll(".playbtn").forEach(b=>b.classList.toggle("playing",pos!=null));requestAnimationFrame(tick)})();
+
+function clipBar(stage,revealed){
+  const w=[.5,.5,1,2,4,7];
+  return `<div class="clip">${w.map((x,i)=>`<div class="sg ${i<=stage?"on":revealed?"rest":""}" style="flex:${x}"></div>`).join("")}<div class="ph"></div></div>
+  <div class="clip-lbl"><span>0:00</span><span>0:01</span><span>0:04</span><span>0:08</span><span>0:15</span></div>`;
+}
+
+/* ---------------- SOLO ---------------- */
+const SOURCES=[
+  {k:"top",t:"My top tracks",s:"What you play most on Spotify",opts:[["4w","Last 4 weeks"],["6m","6 months"],["all","All time"]]},
+  {k:"liked",t:"Liked Songs",s:"1,284 songs"},
+  {k:"band",t:"A band",s:"Every album, deep cuts included",opts:[["blink","blink-182"],["am","Arctic Monkeys"],["rh","Radiohead"]]},
+  {k:"pl",t:"A playlist",s:"32 playlists",opts:[["il80","Israeli 80s"],["il00","Israeli 2000s"],["rock","Road trip rock"]]},
+];
+let solo={screen:"source",src:"top",opt:{top:"6m",band:"blink",pl:"il80"},pool:[],i:0,stage:0,tries:[],sel:null,done:false,won:false,results:[],score:0};
+const soloEl=document.getElementById("solo");
+function srcLabel(){const s=SOURCES.find(x=>x.k===solo.src);const o=s.opts&&s.opts.find(x=>x[0]===solo.opt[s.k]);return s.k==="band"||s.k==="pl"?o[1]:s.t+(o?" · "+o[1]:"")}
+function startSolo(){
+  const tag=solo.src==="band"?"band:"+solo.opt.band:solo.src==="pl"?"pl:"+solo.opt.pl:solo.src;
+  solo.pool=shuffle(LIB.filter(s=>s.tags.includes(tag))).slice(0,6);
+  Object.assign(solo,{screen:"game",i:0,stage:0,tries:[],sel:null,done:false,results:[],score:0});renderSolo();
+  setTimeout(()=>playClip(cur(),STAGES[0]),250);
+}
+const cur=()=>solo.pool[solo.i];
+function renderSolo(){
+  if(solo.screen==="source"){
+    soloEl.innerHTML=`
+      <div class="row"><span class="pill"><i></i>Spotify · Omer</span><span class="small muted" style="margin-left:auto">Solo</span></div>
+      <h1 class="h1">What are we<br>playing?</h1>
+      <div class="stack">${SOURCES.map(s=>`
+        <button class="src" data-src="${s.k}" aria-pressed="${solo.src===s.k}">
+          <div class="row"><span class="art" style="width:40px;height:40px;${artCss({g:G[SOURCES.indexOf(s)]})}"></span><div class="grow"><div class="t">${s.t}</div><div class="s">${s.s}</div></div></div>
+          ${s.opts&&solo.src===s.k?`<div class="row wrapr">${s.opts.map(o=>`<span role="button" tabindex="0" class="chip" data-opt="${o[0]}" aria-pressed="${solo.opt[s.k]===o[0]}" dir="auto">${o[1]}</span>`).join("")}</div>`:""}
+        </button>`).join("")}</div>
+      <button class="btn" id="go">Play 6 songs</button>
+      <p class="small muted" style="margin:0;text-align:center">Six tries per song. Every miss or skip unlocks a longer clip.</p>`;
+    return;
+  }
+  if(solo.screen==="summary"){
+    const max=solo.results.length*6;
+    soloEl.innerHTML=`
+      <div class="topline"><span class="muted">${esc(srcLabel())}</span><span class="score">done</span></div>
+      <div class="big-score">${solo.score}<span class="muted" style="font-size:20px"> / ${max}</span></div>
+      <p class="muted" style="margin:0;text-align:center">${solo.score>=max*.6?"You really do know your music.":solo.score>=max*.3?"Not bad. The intros got you a few times.":"Spotify thinks you listen to these. Spotify might be wrong."}</p>
+      <div class="grid-sum">${solo.results.map(r=>`<div class="sumrow"><span class="art" style="width:34px;height:34px;${artCss(r.s)}"></span><div class="grow"><div dir="auto" style="font-weight:600">${esc(r.s.title)}</div><div class="small muted" dir="auto">${esc(r.s.artist)}</div></div>
+        <div class="sq">${STAGES.map((_,k)=>`<i class="${r.tries[k]?(r.tries[k].type==="miss"?"m":r.tries[k].type==="skip"?"s":"g"):""}"></i>`).join("")}</div></div>`).join("")}</div>
+      <div class="row"><button class="btn ghost grow" id="newsrc">New source</button><button class="btn grow" id="again">Play again</button></div>`;
+    return;
+  }
+  const s=cur();
+  const head=`<div class="topline"><button class="back" id="toSrc">← Sources</button><span class="muted" dir="auto">${esc(srcLabel())}</span><span class="score">${solo.i+1}/${solo.pool.length} · ${solo.score} pts</span></div>`;
+  if(solo.done){
+    soloEl.innerHTML=`${head}
+      <div class="reveal">
+        <span class="art" style="width:150px;height:150px;border-radius:18px;${artCss(s)}"></span>
+        <div><div class="h1" dir="auto" style="font-size:26px">${esc(s.title)}</div><div class="muted" dir="auto">${esc(s.artist)} · ${meta(s)}</div></div>
+        <span class="result ${solo.won?"win":"lose"}">${solo.won?`Got it on try ${solo.tries.length} · +${7-solo.tries.length}`:"Missed it"}</span>
+      </div>
+      ${clipBar(5,true)}
+      <div class="tries">${triesHtml()}</div>
+      <div class="row"><button class="btn ghost grow" id="replay">▶ Hear more</button><button class="btn grow" id="next">${solo.i+1<solo.pool.length?"Next song":"See results"}</button></div>`;
+    return;
+  }
+  soloEl.innerHTML=`${head}
+    ${clipBar(solo.stage,false)}
+    <button class="playbtn" id="play" aria-label="Play clip"></button>
+    <div class="stagetxt">Clip ${STAGES[solo.stage]}s · try ${solo.tries.length+1} of 6</div>
+    <div class="tries">${triesHtml()}</div>
+    <div class="guess"><div class="ac" id="ac" hidden></div><input id="gin" placeholder="Know it? Start typing the song…" autocomplete="off" dir="auto"></div>
+    <div class="row"><button class="btn ghost grow" id="skip">${solo.stage<5?`Skip (+${STAGES[solo.stage+1]-STAGES[solo.stage]}s)`:"Give up"}</button><button class="btn grow" id="sub" disabled>Guess</button></div>`;
+}
+function triesHtml(){return STAGES.map((_,k)=>{const t=solo.tries[k];
+  if(!t)return `<div class="try empty"></div>`;
+  if(t.type==="skip")return `<div class="try"><span class="k">⤼</span><span class="k">Skipped</span></div>`;
+  if(t.type==="win")return `<div class="try"><span class="ok">✓</span><span dir="auto">${esc(t.s.title)}</span><span class="k" style="margin-left:auto" dir="auto">${esc(t.s.artist)}</span></div>`;
+  return `<div class="try"><span class="x">✕</span><span dir="auto">${esc(t.s.title)}</span><span class="k" style="margin-left:auto" dir="auto">${esc(t.s.artist)}</span></div>`}).join("")}
+function advance(type,s){
+  solo.tries.push({type,s});
+  if(type==="win"){solo.won=true;solo.done=true;solo.score+=7-solo.tries.length;sfx("ok")}
+  else if(solo.stage>=5){solo.won=false;solo.done=true;sfx("bad")}
+  else{solo.stage++;if(type==="miss")sfx("bad")}
+  solo.sel=null;
+  if(solo.done){solo.results.push({s:cur(),tries:solo.tries.slice()});renderSolo();playClip(cur(),15)}
+  else{renderSolo();setTimeout(()=>playClip(cur(),STAGES[solo.stage]),type==="miss"?350:120)}
+}
+soloEl.addEventListener("click",e=>{
+  const t=e.target.closest("[data-opt]");if(t){const k=t.closest("[data-src]").dataset.src;solo.opt[k]=t.dataset.opt;renderSolo();return}
+  const src=e.target.closest("[data-src]");if(src){solo.src=src.dataset.src;renderSolo();return}
+  const id=e.target.closest("button,[data-pick]")?.id;const pick=e.target.closest("[data-pick]");
+  if(pick){solo.sel=+pick.dataset.pick;const s=LIB.find(x=>x.id===solo.sel);const gin=document.getElementById("gin");gin.value=`${s.title} — ${s.artist}`;document.getElementById("ac").hidden=true;document.getElementById("sub").disabled=false;return}
+  ensureCtx();
+  if(id==="go"||id==="again")startSolo();
+  else if(id==="newsrc"||id==="toSrc"){stopAudio();solo.screen="source";renderSolo()}
+  else if(id==="play")playPos()!=null?stopAudio():playClip(cur(),STAGES[solo.stage]);
+  else if(id==="skip")advance("skip");
+  else if(id==="sub"&&solo.sel){const s=LIB.find(x=>x.id===solo.sel);advance(s.id===cur().id?"win":"miss",s)}
+  else if(id==="replay")playClip(cur(),15);
+  else if(id==="next"){stopAudio();if(solo.i+1<solo.pool.length){solo.i++;Object.assign(solo,{stage:0,tries:[],sel:null,done:false});renderSolo();setTimeout(()=>playClip(cur(),STAGES[0]),200)}else{solo.screen="summary";renderSolo()}}
+});
+soloEl.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("[data-opt]"))e.target.click();
+  if(e.target.id==="gin"&&e.key==="Enter"){const first=document.querySelector("#ac [data-pick]");if(!solo.sel&&first)first.click();else if(solo.sel)document.getElementById("sub").click()}});
+soloEl.addEventListener("input",e=>{if(e.target.id!=="gin")return;solo.sel=null;document.getElementById("sub").disabled=true;
+  const q=norm(e.target.value),ac=document.getElementById("ac");if(q.length<2){ac.hidden=true;return}
+  const hits=LIB.filter(s=>norm(s.title+" "+s.artist).includes(q)).slice(0,5);
+  ac.innerHTML=hits.length?hits.map((s,k)=>`<button data-pick="${s.id}" class="${k===0?"hl":""}"><span dir="auto">${esc(s.title)}</span><small dir="auto">· ${esc(s.artist)}</small></button>`).join(""):`<button disabled class="muted">No match in your library</button>`;ac.hidden=false});
+
+/* ---------------- PARTY ---------------- */
+const PACKS=[["il80","Israeli 80s"],["il00","Israeli 2000s"],["rock","Road trip rock"],["top","My top tracks"]];
+const TEAMS0=[{name:"Team Savta",color:"var(--cyan)",shade:"#1a8fb0",people:["Savta","Noa","Ido"]},{name:"The Cousins",color:"var(--pink)",shade:"#b0245a",people:["Dana","Yoni","Maya"]},{name:"Abba & Co",color:"var(--yellow)",shade:"#b08f1a",people:["Abba","Omer","Lior"]}];
+const PTS=[5,4,3,2,1,1];
+let party={phase:"setup",pack:"il80",count:5,teams:[],songs:[],n:0,stage:0,buzz:null,buzzT:0,roundT:0,lastPts:null,toast:""};
+const pv=document.getElementById("partyView");let joinTimer=0;
+function resetTeams(){party.teams=TEAMS0.map(t=>({...t,members:[],score:0,locked:false}))}
+resetTeams();
+const song=()=>party.songs[party.n];
+function openLobby(){party.phase="lobby";resetTeams();renderParty();let k=0;const order=[0,1,2,0,1,2,0,1,2];clearInterval(joinTimer);
+  joinTimer=setInterval(()=>{if(party.phase!=="lobby"||k>=order.length){clearInterval(joinTimer);return}const t=party.teams[order[k]];t.members.push(t.people[t.members.length]);k++;renderParty()},650)}
+function startRound(){party.stage=0;party.buzz=null;party.lastPts=null;party.teams.forEach(t=>t.locked=false);party.phase="round";party.roundT=performance.now();renderParty();setTimeout(()=>playClip(song(),STAGES[0]),500)}
+function startGame(){clearInterval(joinTimer);party.teams.forEach(t=>{while(t.members.length<t.people.length)t.members.push(t.people[t.members.length])});
+  const tag=party.pack==="top"?"top":"pl:"+party.pack;party.songs=shuffle(LIB.filter(s=>s.tags.includes(tag))).slice(0,party.count);party.count=party.songs.length;party.n=0;startRound()}
+function longer(){if(party.phase!=="round")return;if(party.stage>=5){reveal(null);return}party.stage++;renderParty();playClip(song(),STAGES[party.stage])}
+function buzz(i){if(party.phase!=="round"||party.teams[i].locked)return;stopAudio();sfx("buzz");party.buzz=i;party.buzzT=((performance.now()-party.roundT)/1000).toFixed(1);party.phase="buzzed";renderParty()}
+function judge(kind){if(party.phase!=="buzzed")return;const t=party.teams[party.buzz];
+  if(kind==="ok"){const p=PTS[party.stage];t.score+=p;sfx("ok");reveal(party.buzz,p)}
+  else if(kind==="artist"){t.score+=1;sfx("ok");reveal(party.buzz,1,true)}
+  else{sfx("bad");t.locked=true;party.toast=`${t.name} is out for this song. Others can steal.`;party.buzz=null;
+    if(party.teams.every(x=>x.locked)){reveal(null);return}party.phase="round";renderParty();setTimeout(()=>{party.toast="";if(party.phase==="round"){renderParty()}},2200)}}
+function reveal(i,p,artistOnly){party.phase="reveal";party.lastPts=i==null?null:{i,p,artistOnly};renderParty();playClip(song(),15)}
+function nextSong(){stopAudio();if(party.n+1<party.songs.length){party.n++;startRound()}else{party.phase="final";renderParty()}}
+
+function teamsHtml(){const max=Math.max(...party.teams.map(t=>t.score));
+  return `<span class="eyebrow">Scores</span>`+party.teams.map((t,i)=>`<div class="team ${max>0&&t.score===max?"lead":""} ${t.locked&&party.phase!=="reveal"?"locked":""}">
+    <span class="sw" style="background:${t.color}"></span><div><div class="nm">${esc(t.name)}</div><div class="mb">${t.members.join(", ")||"waiting for players…"}</div></div><span class="sc">${t.score}</span></div>`).join("")}
+function tvHtml(){
+  const P=party,packName=PACKS.find(p=>p[0]===P.pack)[1];
+  if(P.phase==="setup")return `<div class="tv-l"><span class="eyebrow">Your TV</span><div class="big">Songer<br>Party</div><p class="muted" style="margin:0">Pick the music and open the lobby. Everyone joins from their phone.</p></div><div class="tv-r">${teamsHtml()}</div>`;
+  if(P.phase==="lobby")return `<div class="tv-l"><span class="eyebrow">Scan to join · ${packName}</span><div class="row" style="gap:18px"><div class="qr"><div></div></div><div><div class="code">K7QF</div><div class="muted small mono">songer.omersher.com/join</div></div></div><p class="muted" style="margin:0">No app, no account. Pick your team and wait for the first song.</p></div><div class="tv-r">${teamsHtml()}</div>`;
+  if(P.phase==="final"){const r=P.teams.map((t,i)=>({...t,i})).sort((a,b)=>b.score-a.score);const order=[r[1],r[0],r[2]],h=["62%","88%","42%"];
+    return `<div class="tv-l"><span class="eyebrow">Final · ${P.count} songs · ${packName}</span><div class="big">${esc(r[0].name)}<br>wins!</div><p class="muted" style="margin:0">Fastest buzz of the night: ${esc(r[0].people[0])}. Rematch keeps the teams.</p></div>
+    <div class="tv-r" style="justify-content:flex-end"><div class="podium">${order.map((t,k)=>`<div style="height:${h[k]};background:${t.color};color:#14112b">${k===1?"🏆":k===0?"2nd":"3rd"}<span>${t.score}</span><small style="font-weight:600">${esc(t.name)}</small></div>`).join("")}</div></div>`}
+  const s=song(),head=`<span class="eyebrow">Song ${P.n+1} of ${P.count} · ${packName}</span>`;
+  if(P.phase==="reveal"){const L=P.lastPts;
+    return `<div class="tv-l">${head}<div class="row" style="gap:16px;align-items:center"><span class="art" style="width:clamp(80px,11vw,130px);aspect-ratio:1;border-radius:14px;${artCss(s)}"></span><div class="grow"><div class="big" dir="auto" style="font-size:clamp(22px,3vw,36px)">${esc(s.title)}</div><div class="muted" dir="auto">${esc(s.artist)} · ${meta(s)}</div></div></div>
+      ${clipBar(5,true)}<div class="buzzcard" style="background:${L?"color-mix(in srgb,"+P.teams[L.i].color+" 22%,transparent)":"#ffffff10"}"><span class="eyebrow">${L?(L.artistOnly?"Artist only":"Got it"):"Nobody got it"}</span><b>${L?`+${L.p} ${esc(P.teams[L.i].name)}`:"Point to nobody"}</b></div></div><div class="tv-r">${teamsHtml()}</div>`}
+  if(P.phase==="buzzed"){const t=P.teams[P.buzz];
+    return `<div class="tv-l">${head}<div class="buzzcard" style="background:color-mix(in srgb,${t.color} 22%,#120e2a);box-shadow:inset 0 0 0 2px ${t.color}"><span class="eyebrow" style="color:${t.color}">Buzzed first · ${P.buzzT}s</span><b style="color:${t.color}">${esc(t.name)}</b><span class="muted">Say the song out loud. Worth ${PTS[P.stage]} points.</span></div>${clipBar(P.stage,false)}</div><div class="tv-r">${teamsHtml()}</div>`}
+  return `<div class="tv-l">${head}<div class="big">Name that<br>tune</div><div class="eq">${"<i></i>".repeat(14)}</div>${clipBar(P.stage,false)}<span class="mono small muted">Clip ${STAGES[P.stage]}s · worth ${PTS[P.stage]} pts · buzz on your phone</span></div><div class="tv-r">${teamsHtml()}</div>${P.toast?`<div class="toast">${esc(P.toast)}</div>`:""}`;
+}
+function hostHtml(){const P=party;
+  if(P.phase==="setup")return `<div class="setup"><div class="h2">Party setup <span class="muted small" style="font-family:var(--body);font-weight:400">· on your laptop, before everyone sits down</span></div>
+    <div class="stack" style="gap:8px"><span class="eyebrow">Music</span><div class="row wrapr">${PACKS.map(p=>`<button class="chip" data-pack="${p[0]}" aria-pressed="${P.pack===p[0]}">${p[1]}</button>`).join("")}</div></div>
+    <div class="stack" style="gap:8px"><span class="eyebrow">Songs</span><div class="row wrapr">${[5,10,15].map(n=>`<button class="chip" data-count="${n}" aria-pressed="${P.count===n}">${n}</button>`).join("")}<span class="small muted">Prototype packs hold 6–8 songs.</span></div></div>
+    <div class="row wrapr"><button class="btn" data-h="lobby">Open lobby on TV</button><span class="small muted">Teams: ${TEAMS0.map(t=>t.name).join(", ")}</span></div></div>`;
+  const b=(h,label,cls="",key="")=>`<button class="btn sm ${cls}" data-h="${h}">${label}${key?` <span class="kbd">${key}</span>`:""}</button>`;
+  let inner="";
+  if(P.phase==="lobby")inner=b("start","Start game","yellow")+b("setup","Back","ghost");
+  if(P.phase==="round")inner=b("longer",P.stage<5?`Longer clip (${STAGES[P.stage+1]}s)`:"Reveal","yellow","Space")+b("replay","Replay","ghost")+b("skip","Skip song","ghost","S")+`<span class="small muted">Or tap BUZZ on a phone →</span>`;
+  if(P.phase==="buzzed")inner=b("ok",`✓ Song +${PTS[P.stage]}`,"green","Enter")+b("artist","Artist only +1","ghost")+b("bad","✕ Wrong","red","X");
+  if(P.phase==="reveal")inner=b("next",P.n+1<P.count?"Next song":"Final scores","yellow","Space")+`<span class="small muted">The song keeps playing for a sing-along.</span>`;
+  if(P.phase==="final")inner=b("rematch","Rematch","yellow")+b("setup","New setup","ghost");
+  return `<div class="host"><span class="lbl">Host · you</span>${inner}</div>`;
+}
+function phoneHtml(t,i){const P=party;let mid;
+  if(P.phase==="setup")mid=`<div class="ph-mid muted">Waiting for the host to open the lobby…</div>`;
+  else if(P.phase==="lobby")mid=t.members.length?`<div class="ph-mid"><div style="font-weight:600">You're in!</div><div class="muted small">${t.members.join(", ")}</div><div class="muted small">First song soon</div></div>`:`<div class="ph-mid muted">Scanning QR…</div>`;
+  else if(P.phase==="round")mid=`<button class="buzz" data-buzz="${i}" ${t.locked?"disabled":""} style="background:radial-gradient(circle at 35% 30%,#fff5 0,transparent 42%),${t.color};box-shadow:0 8px 0 ${t.shade}">${t.locked?"OUT":"BUZZ"}</button>`;
+  else if(P.phase==="buzzed")mid=P.buzz===i?`<div class="ph-mid"><div style="font:800 20px var(--display);color:${t.color}">You buzzed first!</div><div class="muted">Say it out loud</div></div>`:`<div class="ph-mid muted">${esc(P.teams[P.buzz].name)} buzzed…</div>`;
+  else if(P.phase==="reveal"){const s=song(),mine=P.lastPts&&P.lastPts.i===i;mid=`<div class="ph-mid"><span class="art" style="width:64px;height:64px;${artCss(s)}"></span><div dir="auto" style="font-weight:600">${esc(s.title)}</div><div class="small muted" dir="auto">${esc(s.artist)}</div>${mine?`<div style="font:800 20px var(--mono);color:${t.color}">+${P.lastPts.p}</div>`:""}</div>`}
+  else{const rank=[...P.teams].sort((a,b)=>b.score-a.score).indexOf(t)+1;mid=`<div class="ph-mid"><div style="font:800 30px var(--display);color:${t.color}">${["1st","2nd","3rd"][rank-1]}</div><div class="muted">${t.score} points</div></div>`}
+  return `<div class="stack" style="gap:6px"><div class="phone"><div class="hd"><span style="color:${t.color}">${esc(t.name)}</span><span>${t.score}</span></div>${mid}</div><div class="phonecap">${esc(t.people[0])}'s phone</div></div>`;
+}
+function renderParty(){pv.innerHTML=`<div class="party"><div class="stagecol"><div class="tv">${tvHtml()}</div>${hostHtml()}</div><div class="phones">${party.teams.map(phoneHtml).join("")}</div></div>`}
+pv.addEventListener("click",e=>{ensureCtx();const el=e.target.closest("[data-h],[data-pack],[data-count],[data-buzz]");if(!el)return;
+  if(el.dataset.pack){party.pack=el.dataset.pack;renderParty();return}
+  if(el.dataset.count){party.count=+el.dataset.count;renderParty();return}
+  if(el.dataset.buzz!=null){buzz(+el.dataset.buzz);return}
+  ({lobby:openLobby,start:startGame,setup:()=>{stopAudio();party.phase="setup";party.count=5;resetTeams();renderParty()},longer,replay:()=>playClip(song(),STAGES[party.stage]),skip:()=>reveal(null),
+    ok:()=>judge("ok"),artist:()=>judge("artist"),bad:()=>judge("bad"),next:nextSong,rematch:()=>{party.teams.forEach(t=>{t.score=0});startGame()}})[el.dataset.h]?.()});
+document.addEventListener("keydown",e=>{if(pv.hidden||e.target.matches("input"))return;const k=e.key.toLowerCase();
+  if(k===" "){e.preventDefault();ensureCtx();party.phase==="round"?longer():party.phase==="reveal"&&nextSong()}
+  else if(k==="enter")judge("ok");else if(k==="x")judge("bad");else if(k==="s"&&party.phase==="round")reveal(null)});
+
+/* ---------------- tabs ---------------- */
+const tS=document.getElementById("tabSolo"),tP=document.getElementById("tabParty");
+function tab(p){stopAudio();tS.setAttribute("aria-pressed",!p);tP.setAttribute("aria-pressed",p);document.getElementById("soloView").hidden=p;pv.hidden=!p;try{localStorage.setItem("songer-tab",p?"party":"solo")}catch(e){}}
+tS.onclick=()=>tab(false);tP.onclick=()=>tab(true);
+renderSolo();renderParty();
+try{if(localStorage.getItem("songer-tab")==="party")tab(true)}catch(e){}
+</script>

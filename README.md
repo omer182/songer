@@ -123,11 +123,9 @@ Pushing to `main` runs GitHub Actions (typecheck, tests, Docker build) and publi
 
 The image is public, so Portainer pulls it without credentials. (New container packages start private on GitHub even for a public repo: package page → Package settings → Change visibility → Public.)
 
-### 2. Data folder (once)
+### 2. Data folder
 
-```bash
-sudo mkdir -p /hosted-apps/songer/data && sudo chown 1000:1000 /hosted-apps/songer/data
-```
+Nothing to do: the container creates `/hosted-apps/songer/data` and fixes its ownership on start (it starts as root, chowns `/data`, then runs as the `node` user). If you run the image with `user:` set, create the folder yourself owned by uid 1000.
 
 ### 3. Stack
 

@@ -3,8 +3,20 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { config } from './config.js';
 
-fs.mkdirSync(config.dataDir, { recursive: true });
-export const db = new DatabaseSync(path.join(config.dataDir, 'songer.db'));
+function openDb(): DatabaseSync {
+  const file = path.join(config.dataDir, 'songer.db');
+  try {
+    fs.mkdirSync(config.dataDir, { recursive: true });
+    return new DatabaseSync(file);
+  } catch (e) {
+    const uid = process.getuid?.() ?? '?';
+    console.error(`Cannot open ${file}: ${(e as Error).message}. The data folder must be writable by uid ${uid}.` +
+      ` On the host: sudo chown -R 1000:1000 <your data folder>`);
+    throw e;
+  }
+}
+
+export const db = openDb();
 
 db.exec(`
   PRAGMA journal_mode = WAL;

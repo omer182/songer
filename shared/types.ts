@@ -103,6 +103,8 @@ export interface PartyState {
   song: Track | null;
   toast: string | null;
   fastestBuzz: { playerName: string; teamId: string; seconds: number } | null;
+  /** Someone who joined by QR to see the answers and run the game from their phone. */
+  judge: { name: string; connected: boolean } | null;
 }
 
 /** Audio instructions the server sends to the host screen, which owns the Spotify player. */
@@ -120,6 +122,7 @@ export type HostAction =
   | { type: 'judge'; verdict: 'song' | 'artist' | 'wrong' }
   | { type: 'next' }
   | { type: 'rematch' }
+  | { type: 'removeJudge' }
   | { type: 'end' };
 
 export interface CreatePartyPayload {

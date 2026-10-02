@@ -16,8 +16,15 @@ interface Player {
   socketId: string | null;
 }
 
+interface Judge {
+  id: string;
+  name: string;
+  socketId: string | null;
+}
+
 interface Room {
   code: string;
+  judge: Judge | null;
   hostUserId: string;
   packLabel: string;
   tracks: Track[];
@@ -88,6 +95,7 @@ export function attachParty(io: Server) {
       song: showSong ? song : null,
       toast: r.toast,
       fastestBuzz: r.fastestBuzz,
+      judge: r.judge ? { name: r.judge.name, connected: !!r.judge.socketId } : null,
     };
   }
 
@@ -171,6 +179,13 @@ export function attachParty(io: Server) {
         r.songIndex = 0;
         r.fastestBuzz = null;
         return beginRound(r);
+      case 'removeJudge':
+        if (r.judge?.socketId) {
+          io.to(r.judge.socketId).emit('party:judgeRemoved');
+          io.sockets.sockets.get(r.judge.socketId)?.leave(remoteChannel(r.code));
+        }
+        r.judge = null;
+        return broadcast(r);
       case 'end':
         cue(r, { kind: 'stop' });
         io.to(playerChannel(r.code)).to(remoteChannel(r.code)).emit('party:ended');
@@ -199,6 +214,7 @@ export function attachParty(io: Server) {
         tracks,
         teams: teams.map((t, i) => ({ id: `t${i + 1}`, name: clean(t.name, 24) || `Team ${i + 1}`, color: clean(t.color, 32), score: 0, locked: false, members: [] })),
         players: new Map(),
+        judge: null,
         phase: 'lobby',
         songIndex: 0,
         stage: 0,
@@ -240,6 +256,7 @@ export function attachParty(io: Server) {
     /* ----- players (phones; no account) ----- */
 
     let joined: { room: Room; player: Player } | null = null;
+    let judging: { room: Room; judge: Judge } | null = null;
 
     socket.on('party:peek', (p: { code: string }, ack: Ack<PartyState>) => {
       const r = rooms.get(clean(p?.code, 4).toUpperCase());
@@ -247,11 +264,21 @@ export function attachParty(io: Server) {
       ack({ ok: true, data: stateFor(r, false) });
     });
 
-    socket.on('player:join', (p: { code: string; name: string; teamId: string; playerId?: string }, ack: Ack<{ playerId: string; state: PartyState }>) => {
+    socket.on('player:join', (p: { code: string; name: string; teamId: string; playerId?: string; role?: 'player' | 'judge' }, ack: Ack<{ playerId: string; state: PartyState }>) => {
       const r = rooms.get(clean(p?.code, 4).toUpperCase());
       if (!r) return ack({ ok: false, error: 'No party with that code. Check the code on the TV.' });
       const name = clean(p.name, 20);
       if (!name) return ack({ ok: false, error: 'Type your name.' });
+      if (p.role === 'judge') {
+        // One judge per party; the same phone (same playerId) can always reclaim the seat after a reconnect.
+        if (r.judge && r.judge.id !== p.playerId && r.judge.socketId) return ack({ ok: false, error: `${r.judge.name} is already the judge.` });
+        const judge: Judge = { id: r.judge && r.judge.id === p.playerId ? r.judge.id : crypto.randomBytes(8).toString('base64url'), name, socketId: socket.id };
+        r.judge = judge;
+        judging = { room: r, judge };
+        socket.join(remoteChannel(r.code));
+        broadcast(r);
+        return ack({ ok: true, data: { playerId: judge.id, state: stateFor(r, true) } });
+      }
       if (!r.teams.some((t) => t.id === p.teamId)) return ack({ ok: false, error: 'Pick a team.' });
       let player = p.playerId ? r.players.get(p.playerId) : undefined;
       if (player) Object.assign(player, { name, teamId: p.teamId, socketId: socket.id });
@@ -263,6 +290,13 @@ export function attachParty(io: Server) {
       socket.join(playerChannel(r.code));
       broadcast(r);
       ack({ ok: true, data: { playerId: player.id, state: stateFor(r, false) } });
+    });
+
+    socket.on('judge:action', (action: HostAction) => {
+      if (!judging || !action) return;
+      const { room: r, judge } = judging;
+      if (!rooms.has(r.code) || r.judge?.id !== judge.id || action.type === 'end') return;
+      hostAction(r, action);
     });
 
     socket.on('player:buzz', () => {
@@ -280,6 +314,10 @@ export function attachParty(io: Server) {
     });
 
     socket.on('disconnect', () => {
+      if (judging && judging.room.judge?.id === judging.judge.id && judging.judge.socketId === socket.id) {
+        judging.judge.socketId = null;
+        if (rooms.has(judging.room.code)) broadcast(judging.room);
+      }
       if (!joined) return;
       if (joined.player.socketId === socket.id) joined.player.socketId = null;
       if (rooms.has(joined.room.code)) broadcast(joined.room);

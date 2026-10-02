@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { PartyState } from '../../../shared/types';
+import type { HostAction, PartyState } from '../../../shared/types';
 import { getSocket, request } from '../lib/socket';
 import { Art } from '../components/bits';
 import { usePartySounds } from '../lib/partySounds';
 import { unlockSfx } from '../lib/sfx';
+import { HostPanel } from './Remote';
 
-// The phone side of a party: pick a name and team, then the screen is one big buzzer.
+// The phone side of a party: pick a name and team (or be the judge), then the screen is one big buzzer.
 // No account; we remember the player in localStorage so a refresh or a dropped connection rejoins.
+
+const JUDGE = 'judge';
 
 interface Saved {
   playerId: string;
   name: string;
+  /** A team id, or JUDGE. */
   teamId: string;
 }
 const storeKey = (code: string) => `songer:join:${code}`;
@@ -40,7 +44,7 @@ export function Join() {
 
   const join = useCallback(
     (who: { name: string; teamId: string; playerId?: string }) =>
-      request<{ playerId: string; state: PartyState }>('player:join', { code, ...who }).then((r) => {
+      request<{ playerId: string; state: PartyState }>('player:join', { code, ...who, role: who.teamId === JUDGE ? 'judge' : 'player' }).then((r) => {
         const m = { playerId: r.playerId, name: who.name, teamId: who.teamId };
         localStorage.setItem(storeKey(code), JSON.stringify(m));
         setMe(m);
@@ -67,14 +71,23 @@ export function Join() {
       setEnded(true);
       localStorage.removeItem(storeKey(code));
     };
+    const onJudgeRemoved = () => {
+      localStorage.removeItem(storeKey(code));
+      setMe(null);
+      setTeamId('');
+      setError('The host removed you as judge. You can join a team instead.');
+      request<PartyState>('party:peek', { code }).then(setState).catch(() => {});
+    };
     s.on('connect', onConnect);
     s.on('party:state', onState);
     s.on('party:ended', onEnded);
+    s.on('party:judgeRemoved', onJudgeRemoved);
     if (s.connected) onConnect();
     return () => {
       s.off('connect', onConnect);
       s.off('party:state', onState);
       s.off('party:ended', onEnded);
+      s.off('party:judgeRemoved', onJudgeRemoved);
     };
   }, [code, join]);
 
@@ -111,7 +124,13 @@ export function Join() {
     );
   }
 
+  /* ----- judge: answers + controls ----- */
+  if (me?.teamId === JUDGE) {
+    return <HostPanel state={state} act={(a: HostAction) => getSocket().emit('judge:action', a)} role={`Judge ${me.name}`} />;
+  }
+
   const myTeam = state.teams.find((t) => t.id === me?.teamId);
+  const judgeTaken = !!state.judge?.connected;
 
   /* ----- pick name + team ----- */
   if (!me || !myTeam) {
@@ -130,9 +149,20 @@ export function Join() {
                 <span className="small muted">{t.members.map((m) => m.name).join(', ')}</span>
               </button>
             ))}
+            <button aria-pressed={teamId === JUDGE} disabled={judgeTaken} style={{ color: 'var(--violet)', opacity: judgeTaken ? 0.5 : 1 }} onClick={() => setTeamId(JUDGE)}>
+              <span className="sw" style={{ background: 'var(--violet)' }} />
+              <span className="grow" style={{ color: 'var(--fg)' }}>
+                Be the judge
+                <span className="small muted" style={{ display: 'block', fontFamily: 'var(--body)', fontWeight: 400 }}>
+                  {judgeTaken ? `${state.judge!.name} is the judge` : 'See the answers, run the game, no team'}
+                </span>
+              </span>
+            </button>
           </div>
           {error && <div className="err">{error}</div>}
-          <button className="btn lg" disabled={!name.trim() || !teamId} onClick={submitJoin}>Join {state.teams.find((t) => t.id === teamId)?.name ?? 'a team'}</button>
+          <button className="btn lg" disabled={!name.trim() || !teamId} onClick={submitJoin}>
+            {teamId === JUDGE ? 'Join as judge' : `Join ${state.teams.find((t) => t.id === teamId)?.name ?? 'a team'}`}
+          </button>
         </div>
       </div>
     );

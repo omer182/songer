@@ -154,6 +154,23 @@ describe('party', () => {
     expect((await remoteRound).song?.title).toBeTruthy(); // remotes get the answer, phones don't
     expect(cues.at(-1)).toMatchObject({ kind: 'clip', ms: 500 }); // audio still goes to the TV only
 
+    // a guest joins by QR as the judge: one seat, sees the answer, runs the game
+    const judge = await client();
+    const j = await ask<{ playerId: string; state: PartyState }>(judge, 'player:join', { code, name: 'Abba', teamId: '', role: 'judge' });
+    expect(j.ok).toBe(true);
+    expect(j.data!.state.song?.title).toBeTruthy();
+    const rival = await client();
+    const taken = await ask(rival, 'player:join', { code, name: 'Kid', teamId: '', role: 'judge' });
+    expect(taken).toMatchObject({ ok: false, error: 'Abba is already the judge.' });
+    const judgeSees = nextState(judge, (s) => s.phase === 'reveal');
+    judge.emit('judge:action', { type: 'skip' });
+    expect((await judgeSees).judge).toEqual({ name: 'Abba', connected: true });
+    judge.emit('judge:action', { type: 'end' }); // judges can't end the party
+    const removed = new Promise((r) => judge.once('party:judgeRemoved', r));
+    host.emit('host:action', { code, action: { type: 'removeJudge' } });
+    await removed;
+    expect((await ask(rival, 'player:join', { code, name: 'Kid', teamId: '', role: 'judge' })).ok).toBe(true);
+
     // end
     const ended = new Promise((r) => p2.once('party:ended', r));
     host.emit('host:action', { code, action: { type: 'end' } });

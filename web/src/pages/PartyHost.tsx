@@ -212,7 +212,10 @@ export function PartyHost() {
             <div className="muted mono" style={{ fontSize: 'clamp(12px,1.1vw,16px)' }}>{st.joinUrl.replace(/^https?:\/\//, '')}</div>
           </div>
         </div>
-        <p className="muted" style={{ margin: 0, fontSize: 'clamp(13px,1.3vw,18px)' }}>No app, no account. Pick your team and wait for the first song.</p>
+        <p className="muted" style={{ margin: 0, fontSize: 'clamp(13px,1.3vw,18px)' }}>
+          No app, no account. Pick your team, or one person can be the judge.
+          {st.judge && <><br /><b style={{ color: 'var(--violet)' }}>Judge: {st.judge.name}</b></>}
+        </p>
       </div>
     );
   } else if (st.phase === 'final') {
@@ -335,6 +338,11 @@ export function PartyHost() {
             <span className="grow" />
             {error && <span className="small" style={{ color: 'var(--red)' }}>{error}</span>}
             {player.status === 'error' && <span className="small" style={{ color: 'var(--red)' }}>{player.error}</span>}
+            {st.judge && (
+              <button className="btn ghost sm" title="Remove the judge" onClick={() => act({ type: 'removeJudge' })}>
+                Judge: {st.judge.name}{st.judge.connected ? '' : ' (offline)'} ✕
+              </button>
+            )}
             <RemoteQrButton />
             <button className="btn ghost sm" onClick={fullscreen}>Fullscreen <span className="kbd">F</span></button>
             <button className="btn ghost sm" onClick={endParty}>End party</button>

@@ -35,7 +35,6 @@ export function Remote() {
 
   const act = (action: HostAction) => {
     if (!state) return;
-    navigator.vibrate?.(30);
     getSocket().emit('host:action', { code: state.code, action });
   };
 
@@ -57,6 +56,15 @@ export function Remote() {
     );
   }
 
+  return <HostPanel state={state} act={act} role="Host" />;
+}
+
+/** The answer + judge controls screen, shared by the host's phone remote and a judge who joined by QR. */
+export function HostPanel({ state, act: send, role }: { state: PartyState; act: (a: HostAction) => void; role: string }) {
+  const act = (a: HostAction) => {
+    navigator.vibrate?.(30);
+    send(a);
+  };
   const st = state;
   const buzzTeam = st.teams.find((t) => t.id === st.buzz?.teamId);
   const big = (label: string, action: HostAction, cls = '') => (
@@ -70,7 +78,7 @@ export function Remote() {
       <div className="phone" style={{ textAlign: 'left', minHeight: 'auto' }}>
         <div className="hd">
           <span className="logo" style={{ fontSize: 22 }}>song<b>er</b></span>
-          <span className="mono muted">Host · {st.code}</span>
+          <span className="mono muted">{role} · {st.code}</span>
         </div>
 
         {st.phase === 'lobby' ? (

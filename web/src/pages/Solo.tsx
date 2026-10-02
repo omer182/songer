@@ -9,6 +9,7 @@ import { Art, ClipBar } from '../components/bits';
 import { SourcePicker } from '../components/SourcePicker';
 import { GuessInput } from '../components/GuessInput';
 import { TopBar } from './Home';
+import { celebrate } from '../lib/celebrate';
 
 type Try = { type: 'skip' } | { type: 'miss' | 'win'; guess: Suggestion };
 interface SongResult {
@@ -78,6 +79,7 @@ export function Solo() {
     const next = [...tries, t];
     setTries(next);
     setGuess(null);
+    if (t.type === 'win') celebrate((7 - next.length) / 6); // try 1 = full blast, try 6 = a sprinkle
     if (t.type === 'win' || stage >= MAX_STAGE) {
       setDone(true);
       setResults((r) => [...r, { track, tries: next, won: t.type === 'win' }]);

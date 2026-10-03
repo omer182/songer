@@ -14,6 +14,7 @@ export default defineConfig({
     proxy: {
       '/api': 'http://127.0.0.1:5100',
       '/play/socket.io': { target: 'http://127.0.0.1:5100', ws: true },
+      '/play/pair': 'http://127.0.0.1:5100', // one-time host-remote sign-in links
     },
   },
   test: { root: '.', include: ['shared/**/*.test.ts', 'server/**/*.test.ts'] },

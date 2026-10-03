@@ -14,6 +14,7 @@ import {
 } from './library.js';
 import { attachParty } from './party.js';
 import { searchDeezerPlaylists } from './deezer.js';
+import { getLyrics } from './lyrics.js';
 import { SOCKET_PATH, type Me, type Source } from '../shared/types.js';
 
 const app = express();
@@ -68,6 +69,8 @@ app.get(
 
 /* ---------- phone pairing: sign a phone in as you by scanning a QR on the signed-in laptop ---------- */
 // Spotify sign-in only works at the registered address (127.0.0.1 in dev), so phones get a one-time link instead.
+// The link and the remote page live under /play, the one path open to guests behind an access proxy; the link
+// is single-use, expires in 5 minutes, and can only be created by the signed-in host (POST /api/pair).
 
 const pairTokens = new Map<string, { userId: string; expires: number }>();
 
@@ -76,10 +79,10 @@ app.post('/api/pair', requireUser, (req, res) => {
   for (const [t, v] of pairTokens) if (v.expires < now) pairTokens.delete(t);
   const token = crypto.randomBytes(18).toString('base64url');
   pairTokens.set(token, { userId: req.userId!, expires: now + 5 * 60_000 });
-  res.json({ url: `${config.joinBaseUrl}/api/pair/${token}`, expiresInSec: 300 });
+  res.json({ url: `${config.joinBaseUrl}/play/pair/${token}`, expiresInSec: 300 });
 });
 
-app.get('/api/pair/:token', (req, res) => {
+app.get('/play/pair/:token', (req, res) => {
   const p = pairTokens.get(req.params.token);
   pairTokens.delete(req.params.token); // single use
   if (!p || p.expires < Date.now()) {
@@ -87,7 +90,7 @@ app.get('/api/pair/:token', (req, res) => {
     return;
   }
   createSession(res, p.userId);
-  res.redirect('/remote');
+  res.redirect('/play/host');
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -158,6 +161,21 @@ app.post(
   }),
 );
 
+/** Synced lyrics for the sing-along reveal (LRCLIB); { lines: null } when none were found. */
+app.get(
+  '/api/lyrics',
+  requireUser,
+  route(async (req, res) => {
+    const { id, title, artists, durationMs } = req.query as Record<string, string | undefined>;
+    if (!id || !title || !artists) return res.status(400).json({ error: 'Missing track details.' });
+    try {
+      res.json({ lines: await getLyrics(id, title, artists, Number(durationMs) || 0) });
+    } catch {
+      res.json({ lines: null }); // lyrics are a nice-to-have; never break the reveal
+    }
+  }),
+);
+
 app.post('/api/solo/result', requireUser, (req, res) => {
   const { label, score, maxScore, detail } = req.body as { label: string; score: number; maxScore: number; detail: unknown };
   saveSoloResult(req.userId!, String(label || '').slice(0, 100), Number(score) || 0, Number(maxScore) || 0, detail ?? null);
@@ -181,6 +199,7 @@ if (fs.existsSync(path.join(webDir, 'index.html'))) {
   app.use(express.static(webDir, { index: false, maxAge: '1h' }));
   // Old /join links (printed QR codes) keep working.
   app.get(/^\/join(\/.*)?$/, (req, res) => res.redirect(301, req.path.replace(/^\/join/, '/play')));
+  app.get('/remote', (_req, res) => res.redirect(301, '/play/host'));
   app.get(/^(?!\/api|\/play\/socket\.io).*/, (_req, res) => res.sendFile(path.join(webDir, 'index.html')));
 }
 

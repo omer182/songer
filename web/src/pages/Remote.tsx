@@ -38,8 +38,23 @@ export function Remote() {
     getSocket().emit('host:action', { code: state.code, action });
   };
 
+  if (state === undefined && error) {
+    return (
+      <div className="page fit">
+        <div className="phone">
+          <div className="hd"><Logo size="sm" link={false} /><span className="mono muted">Host remote</span></div>
+          <div className="mid">
+            <div className="h2">Sign this phone in</div>
+            <p className="muted" style={{ margin: 0 }}>
+              On the laptop, open <b>Party</b> and tap <b>📱 Host remote</b>, then scan that QR code with this phone. It signs the phone in as the host for this party.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (state === undefined) {
-    return <div className="page center" style={{ paddingTop: '30vh' }}>{error ? <div className="err">{error}</div> : <span className="spin" />}</div>;
+    return <div className="page center" style={{ paddingTop: '30vh' }}><span className="spin" /></div>;
   }
 
   if (!state) {
@@ -113,7 +128,8 @@ export function HostPanel({ state, act: send, role }: { state: PartyState; act: 
 
         <div className="stack">
           {st.phase === 'lobby' && big('Start game', { type: 'start' }, 'yellow')}
-          {st.phase === 'round' && (
+          {st.phase === 'round' && st.getReady && <span className="mono muted small">Get ready… the first clip plays in a moment.</span>}
+          {st.phase === 'round' && !st.getReady && (
             <>
               <span className="mono muted small">Playing {STAGES_MS[st.stage] / 1000}s clip · worth {PARTY_POINTS[st.stage]} pts</span>
               {big(st.stage < MAX_STAGE ? `Longer clip (${STAGES_MS[st.stage + 1] / 1000}s)` : 'Reveal', { type: 'longer' }, 'yellow')}

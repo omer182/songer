@@ -100,7 +100,7 @@ Each song: the 0.5s clip plays automatically. Type to search, pick a suggestion,
 3. Guests scan the QR (or open `/play` and type the 4-letter code), type a name and pick a team.
 4. **Judge**: someone needs to see the answers to rule on shouted guesses. Any of these works, at the same time:
    - **One guest as judge**: on the join screen pick **Be the judge**. Their phone shows the answer and all controls. One judge per party; the TV shows who it is, and the laptop's "Judge: name ✕" button removes them. Judges can't end the party.
-   - **Your phone as host remote**: on the laptop, **📱 Host remote** shows a one-time QR (5 minutes) that signs your phone in as you; it shows answers and controls.
+   - **Your phone as host remote**: on the laptop, **📱 Host remote** shows a one-time QR (5 minutes) that signs your phone in as you and opens `/play/host`, with answers and controls. It only uses `/play/*`, so it works behind the guest bypass.
    - **The laptop keyboard** (the TV shows no answers, so this is for when you know the songs):
 
 | Key | When | Does |
@@ -113,7 +113,7 @@ Each song: the 0.5s clip plays automatically. Type to search, pick a suggestion,
 | `S` | round | skip the song (reveal, no points) |
 | `F` | any | fullscreen |
 
-Buzzing stops the music and plays a quiz-show buzzer on the TV; correct and wrong answers have their own sounds. After the last song: podium, fastest buzz of the night, **Rematch** (same teams, reshuffled songs).
+Each song starts with a short "Get ready…" while the TV loads it, so nobody misses the first half-second (no buzzing until it plays). Buzzing stops the music and plays a quiz-show buzzer on the TV; correct and wrong answers have their own sounds. Late arrivals can join any time: **📲 Join QR** (`J`) shows the code on the TV. **🎤 Lyrics** (`L`) shows time-synced lyrics during the sing-along (from LRCLIB; most international songs, some Hebrew). After the last song: podium, fastest buzz of the night, **Rematch** (same teams, reshuffled songs).
 
 ## Deploy to the homeserver
 

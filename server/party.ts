@@ -3,7 +3,7 @@ import type { Server, Socket } from 'socket.io';
 import { config } from './config.js';
 import { userIdFromCookieHeader } from './auth.js';
 import {
-  ARTIST_POINTS, MAX_STAGE, PARTY_POINTS, STAGES_MS, WRONG_PENALTY,
+  ARTIST_POINTS, GET_READY_MS, MAX_STAGE, PARTY_POINTS, STAGES_MS, WRONG_PENALTY,
   type Ack, type CreatePartyPayload, type HostAction, type PartyCue, type PartyPhase, type PartyState, type PartyTeam, type Track,
 } from '../shared/types.js';
 
@@ -39,6 +39,8 @@ interface Room {
   fastestBuzz: PartyState['fastestBuzz'];
   roundStartedAt: number;
   touchedAt: number;
+  /** Pending "Get ready" timer for the current round. */
+  readyTimer: ReturnType<typeof setTimeout> | null;
 }
 
 const rooms = new Map<string, Room>();
@@ -95,6 +97,7 @@ export function attachParty(io: Server) {
       song: showSong ? song : null,
       toast: r.toast,
       fastestBuzz: r.fastestBuzz,
+      getReady: !!r.readyTimer,
       judge: r.judge ? { name: r.judge.name, connected: !!r.judge.socketId } : null,
     };
   }
@@ -108,10 +111,25 @@ export function attachParty(io: Server) {
   const cue = (r: Room, c: PartyCue) => io.to(hostChannel(r.code)).emit('party:cue', c);
   const current = (r: Room) => r.tracks[r.songIndex];
 
+  function clearReady(r: Room) {
+    if (r.readyTimer) clearTimeout(r.readyTimer);
+    r.readyTimer = null;
+  }
+
+  /** New song: a short "Get ready" while the TV loads it silently, then the first 0.5s clip from 0:00. */
   function beginRound(r: Room) {
-    Object.assign(r, { phase: 'round', stage: 0, buzz: null, last: null, toast: null, roundStartedAt: Date.now() });
+    clearReady(r);
+    Object.assign(r, { phase: 'round', stage: 0, buzz: null, last: null, toast: null });
+    const song = current(r);
+    cue(r, { kind: 'load', uri: song.uri });
+    r.readyTimer = setTimeout(() => {
+      r.readyTimer = null;
+      if (!rooms.has(r.code) || r.phase !== 'round' || current(r) !== song) return;
+      r.roundStartedAt = Date.now();
+      broadcast(r);
+      cue(r, { kind: 'clip', uri: song.uri, ms: STAGES_MS[0] });
+    }, GET_READY_MS);
     broadcast(r);
-    cue(r, { kind: 'clip', uri: current(r).uri, ms: STAGES_MS[0] });
   }
 
   function reveal(r: Room, teamId: string | null, points: number, artistOnly = false) {
@@ -130,16 +148,17 @@ export function attachParty(io: Server) {
         }
         return;
       case 'longer':
-        if (r.phase !== 'round') return;
+        if (r.phase !== 'round' || r.readyTimer) return;
         if (r.stage >= MAX_STAGE) return reveal(r, null, 0);
         r.stage++;
         r.toast = null;
         broadcast(r);
         return cue(r, { kind: 'clip', uri: current(r).uri, ms: STAGES_MS[r.stage] });
       case 'replay':
-        if (r.phase === 'round') cue(r, { kind: 'clip', uri: current(r).uri, ms: STAGES_MS[r.stage] });
+        if (r.phase === 'round' && !r.readyTimer) cue(r, { kind: 'clip', uri: current(r).uri, ms: STAGES_MS[r.stage] });
         return;
       case 'skip':
+        clearReady(r);
         if (r.phase === 'round' || r.phase === 'buzzed') reveal(r, null, 0);
         return;
       case 'judge': {
@@ -186,6 +205,7 @@ export function attachParty(io: Server) {
         r.judge = null;
         return broadcast(r);
       case 'end':
+        clearReady(r);
         cue(r, { kind: 'stop' });
         io.to(playerChannel(r.code)).to(remoteChannel(r.code)).emit('party:ended');
         rooms.delete(r.code);
@@ -214,6 +234,7 @@ export function attachParty(io: Server) {
         teams: teams.map((t, i) => ({ id: `t${i + 1}`, name: clean(t.name, 24) || `Team ${i + 1}`, color: clean(t.color, 32), score: 0, members: [] })),
         players: new Map(),
         judge: null,
+        readyTimer: null,
         phase: 'lobby',
         songIndex: 0,
         stage: 0,
@@ -302,7 +323,7 @@ export function attachParty(io: Server) {
       if (!joined) return;
       const { room: r, player } = joined;
       const t = r.teams.find((x) => x.id === player.teamId);
-      if (!rooms.has(r.code) || r.phase !== 'round' || !t) return;
+      if (!rooms.has(r.code) || r.phase !== 'round' || r.readyTimer || !t) return; // no buzzing before the clip
       const seconds = Math.round((Date.now() - r.roundStartedAt) / 100) / 10;
       r.phase = 'buzzed';
       r.toast = null;

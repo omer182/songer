@@ -11,6 +11,8 @@ export const PARTY_POINTS = [5, 4, 3, 2, 1, 1] as const;
 export const ARTIST_POINTS = 1;
 /** A wrong answer costs the team this much (scores can go below zero); the team stays in the round. */
 export const WRONG_PENALTY = 1;
+/** Party: "Get ready" pause before each song's first clip, while the TV loads the song silently. */
+export const GET_READY_MS = 2500;
 
 export interface Track {
   id: string;
@@ -109,6 +111,8 @@ export interface PartyState {
   song: Track | null;
   toast: string | null;
   fastestBuzz: { playerName: string; teamId: string; seconds: number } | null;
+  /** True during the short "Get ready" pause before a song's first clip (no buzzing yet). */
+  getReady: boolean;
   /** Someone who joined by QR to see the answers and run the game from their phone. */
   judge: { name: string; connected: boolean } | null;
 }

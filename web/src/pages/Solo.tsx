@@ -16,6 +16,8 @@ interface SongResult {
   track: Track;
   tries: Try[];
   won: boolean;
+  /** Skipped without playing it out: no points, and it doesn't count toward the maximum. */
+  skipped?: boolean;
 }
 
 const pointsFor = (tries: number) => 7 - tries; // solved on try 1 = 6 points … try 6 = 1 point
@@ -39,6 +41,7 @@ export function Solo() {
   usePlayerStatus();
 
   const track = pool[i];
+  const playedCount = results.filter((r) => !r.skipped).length;
   const score = results.reduce((s, r) => s + (r.won ? pointsFor(r.tries.length) : 0), 0);
   const won = done && tries.at(-1)?.type === 'win';
 
@@ -117,6 +120,14 @@ export function Solo() {
     advance({ type: isCorrect(guess, track) ? 'win' : 'miss', guess });
   }
 
+  /** Skip this song entirely (bad intro, or you'd rather not): straight to the next one, no points. */
+  function skipSong() {
+    if (!track) return;
+    window.clearTimeout(startTimer.current);
+    setResults((r) => [...r, { track, tries, won: false, skipped: true }]);
+    nextSong();
+  }
+
   function nextSong() {
     player.stop();
     if (i + 1 < pool.length) beginSong(pool, i + 1);
@@ -130,8 +141,8 @@ export function Solo() {
       .soloResult({
         label: sourceLabel(source),
         score,
-        maxScore: results.length * 6,
-        detail: results.map((r) => ({ id: r.track.id, title: r.track.title, artists: r.track.artists, tries: r.tries.length, won: r.won })),
+        maxScore: playedCount * 6,
+        detail: results.map((r) => ({ id: r.track.id, title: r.track.title, artists: r.track.artists, tries: r.tries.length, won: r.won, skipped: !!r.skipped })),
       })
       .catch(() => {});
   }, [phase, score, results, source]);
@@ -193,10 +204,10 @@ export function Solo() {
           </div>
           <div className="big-score">
             {score}
-            <span className="muted" style={{ fontSize: 22 }}> / {results.length * 6}</span>
+            <span className="muted" style={{ fontSize: 22 }}> / {playedCount * 6}</span>
           </div>
           <p className="muted center" style={{ margin: 0 }}>
-            {score >= results.length * 3.6 ? 'You really do know your music.' : score >= results.length * 1.8 ? 'Not bad. The intros got you a few times.' : 'Spotify thinks you listen to these. Spotify might be wrong.'}
+            {score >= playedCount * 3.6 ? 'You really do know your music.' : score >= playedCount * 1.8 ? 'Not bad. The intros got you a few times.' : 'Spotify thinks you listen to these. Spotify might be wrong.'}
           </p>
           <div className="stack tight sumlist">
             {results.map((r) => (
@@ -206,12 +217,16 @@ export function Solo() {
                   <div dir="auto" style={{ fontWeight: 600 }}>{r.track.title}</div>
                   <div className="small muted" dir="auto">{r.track.artists}</div>
                 </div>
-                <div className="sq">
-                  {STAGES_MS.map((_, k) => {
-                    const t = r.tries[k];
-                    return <i key={k} className={t ? (t.type === 'miss' ? 'm' : t.type === 'skip' ? 's' : 'g') : ''} />;
-                  })}
-                </div>
+                {r.skipped ? (
+                  <span className="mono muted small">skipped</span>
+                ) : (
+                  <div className="sq">
+                    {STAGES_MS.map((_, k) => {
+                      const t = r.tries[k];
+                      return <i key={k} className={t ? (t.type === 'miss' ? 'm' : t.type === 'skip' ? 's' : 'g') : ''} />;
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -270,6 +285,9 @@ export function Solo() {
                 </button>
                 <button className="btn grow" disabled={!guess} onClick={() => { (document.activeElement as HTMLElement | null)?.blur(); submit(); }}>Guess</button>
               </div>
+              <button className="back small center" style={{ textDecoration: 'underline', justifySelf: 'center' }} onClick={skipSong}>
+                Skip this song ⏭
+              </button>
             </>
           )}
         </div>

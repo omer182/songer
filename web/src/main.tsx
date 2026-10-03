@@ -47,7 +47,9 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/join/:code?" element={<JoinRedirect />} />
         <Route path="/solo" element={<Authed><Solo /></Authed>} />
         <Route path="/party" element={<Authed><PartyHost /></Authed>} />
-        <Route path="/remote" element={<Authed><Remote /></Authed>} />
+        {/* The host remote talks only to /play/socket.io, so it needs no /api access (works behind an access proxy). */}
+        <Route path="/play/host" element={<Remote />} />
+        <Route path="/remote" element={<Navigate to="/play/host" replace />} />
         <Route path="*" element={<Authed><Home /></Authed>} />
       </Routes>
     </BrowserRouter>

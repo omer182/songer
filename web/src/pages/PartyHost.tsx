@@ -10,6 +10,7 @@ import { useKeys, usePlayerStatus } from '../lib/hooks';
 import { Art, ClipBar, CountPicker, Eq } from '../components/bits';
 import { SourcePicker } from '../components/SourcePicker';
 import { RemoteQrButton } from '../components/RemoteQr';
+import { Lyrics } from '../components/Lyrics';
 import { usePartySounds } from '../lib/partySounds';
 import { unlockSfx } from '../lib/sfx';
 import { TopBar } from './Home';
@@ -26,6 +27,24 @@ export function PartyHost() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
+  const [showJoin, setShowJoin] = useState(false);
+  // Sing-along lyrics on the TV during the reveal (remembered on this computer).
+  const [lyricsOn, setLyricsOn] = useState(() => {
+    try {
+      return localStorage.getItem('songer:lyrics') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleLyrics = () =>
+    setLyricsOn((v) => {
+      try {
+        localStorage.setItem('songer:lyrics', v ? '0' : '1');
+      } catch {
+        /* private mode */
+      }
+      return !v;
+    });
   const tvRef = useRef<HTMLDivElement>(null);
   usePlayerStatus();
   usePartySounds(state);
@@ -119,6 +138,8 @@ export function PartyHost() {
       s: () => (state?.phase === 'round' || state?.phase === 'buzzed') && act({ type: 'skip' }),
       r: () => state?.phase === 'round' && act({ type: 'replay' }),
       f: fullscreen,
+      j: () => state && state.phase !== 'lobby' && setShowJoin((v) => !v),
+      l: toggleLyrics,
     },
     !!state,
   );
@@ -178,7 +199,7 @@ export function PartyHost() {
 
   const scoreboard = (
     <div className="tv-r">
-      <span className="eyebrow">Scores</span>
+      <span className="eyebrow">Scores · join with code {st.code}</span>
       {st.teams.map((t) => (
         <div key={t.id} className={`team ${maxScore > 0 && t.score === maxScore ? 'lead' : ''} `}>
           <span className="sw" style={{ background: t.color }} />
@@ -250,7 +271,7 @@ export function PartyHost() {
       <div className="tv-l">
         {head}
         <div className="row" style={{ gap: 18 }}>
-          <Art src={st.song.image} size="clamp(90px,13vw,200px)" radius={16} />
+          <Art src={st.song.image} size={lyricsOn ? 'clamp(64px,8vw,120px)' : 'clamp(90px,13vw,200px)'} radius={16} />
           <div className="grow">
             <div className="big" dir="auto" style={{ fontSize: 'clamp(24px,3.4vw,52px)' }}>{st.song.title}</div>
             <div className="muted" dir="auto" style={{ fontSize: 'clamp(13px,1.4vw,20px)' }}>
@@ -258,10 +279,17 @@ export function PartyHost() {
             </div>
           </div>
         </div>
-        <div className="buzzcard" style={{ background: lt ? `color-mix(in srgb, ${lt.color} 22%, transparent)` : '#ffffff10' }}>
-          <span className="eyebrow">{lt ? (L!.artistOnly ? 'Artist only' : 'Got it') : 'Nobody got it'}</span>
-          <b>{lt ? `+${L!.points} ${lt.name}` : 'No points this time'}</b>
-        </div>
+        {lyricsOn ? (
+          <>
+            <span className="eyebrow">{lt ? `${L!.artistOnly ? 'Artist only' : 'Got it'} · +${L!.points} ${lt.name}` : 'Nobody got it'}</span>
+            <Lyrics song={st.song} />
+          </>
+        ) : (
+          <div className="buzzcard" style={{ background: lt ? `color-mix(in srgb, ${lt.color} 22%, transparent)` : '#ffffff10' }}>
+            <span className="eyebrow">{lt ? (L!.artistOnly ? 'Artist only' : 'Got it') : 'Nobody got it'}</span>
+            <b>{lt ? `+${L!.points} ${lt.name}` : 'No points this time'}</b>
+          </div>
+        )}
       </div>
     );
   } else if (st.phase === 'buzzed' && st.buzz) {
@@ -281,11 +309,11 @@ export function PartyHost() {
     left = (
       <div className="tv-l">
         {head}
-        <div className="big">Name that<br />tune</div>
+        <div className="big">{st.getReady ? <>Get<br />ready…</> : <>Name that<br />tune</>}</div>
         <Eq />
-        <ClipBar stage={st.stage} />
+        <ClipBar stage={st.stage} waiting={st.getReady} />
         <span className="mono muted" style={{ fontSize: 'clamp(12px,1.1vw,16px)' }}>
-          Clip {STAGES_MS[st.stage] / 1000}s · worth {PARTY_POINTS[st.stage]} pts · buzz on your phone
+          {st.getReady ? 'The first half-second plays in a moment. Listen!' : `Clip ${STAGES_MS[st.stage] / 1000}s · worth ${PARTY_POINTS[st.stage]} pts · buzz on your phone`}
         </span>
       </div>
     );
@@ -310,10 +338,23 @@ export function PartyHost() {
       <div className="page">
         <div className="tvwrap" ref={tvRef}>
           <div className="tv">{inner}</div>
+          {showJoin && (
+            <div className="modal" role="dialog" aria-label="Join the party" onClick={() => setShowJoin(false)}>
+              <div className="modal-card center" onClick={(e) => e.stopPropagation()}>
+                <h2 className="h2">Join the party</h2>
+                <div className="qr" style={{ width: 'min(300px, 60vw)', margin: '0 auto' }}>{qr && <img src={qr} alt="QR code to join" />}</div>
+                <div className="code" style={{ fontSize: 44 }}>{st.code}</div>
+                <div className="muted mono small">{st.joinUrl.replace(/^https?:\/\//, '')}</div>
+                <p className="muted small" style={{ margin: 0 }}>Pick a team and you're in for the next buzz.</p>
+                <button className="btn" onClick={() => setShowJoin(false)}>Done</button>
+              </div>
+            </div>
+          )}
           <div className="host">
             <span className="lbl">Host</span>
             {st.phase === 'lobby' && b('Start game', { type: 'start' }, 'yellow', 'Space')}
-            {st.phase === 'round' && (
+            {st.phase === 'round' && st.getReady && <span className="muted small">Get ready…</span>}
+            {st.phase === 'round' && !st.getReady && (
               <>
                 {b(st.stage < MAX_STAGE ? `Longer clip (${STAGES_MS[st.stage + 1] / 1000}s)` : 'Reveal', { type: 'longer' }, 'yellow', 'Space')}
                 {b('Replay', { type: 'replay' }, 'ghost', 'R')}
@@ -337,6 +378,12 @@ export function PartyHost() {
                 Judge: {st.judge.name}{st.judge.connected ? '' : ' (offline)'} ✕
               </button>
             )}
+            {st.phase !== 'lobby' && (
+              <button className="btn ghost sm" onClick={() => setShowJoin(true)}>📲 Join QR <span className="kbd">J</span></button>
+            )}
+            <button className="chip" aria-pressed={lyricsOn} onClick={toggleLyrics} title="Show synced lyrics on the TV during the sing-along">
+              🎤 Lyrics <span className="kbd">L</span>
+            </button>
             <RemoteQrButton />
             <button className="btn ghost sm" onClick={fullscreen}>Fullscreen <span className="kbd">F</span></button>
             <button className="btn ghost sm" onClick={endParty}>End party</button>

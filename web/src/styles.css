@@ -220,6 +220,12 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .modal { position: fixed; inset: 0; background: #07051ad9; display: grid; place-items: center; z-index: 50; padding: 16px; }
 .modal-card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 20px; width: min(400px, 100%); display: grid; gap: 14px; animation: pop 0.25s; }
 
+/* ---------- lyrics (TV reveal) ---------- */
+.lyrics { display: grid; gap: clamp(4px, 0.6vw, 10px); min-height: clamp(90px, 13vw, 190px); align-content: center; }
+.ly-prev, .ly-next { color: var(--muted); font: 500 clamp(14px, 1.6vw, 24px)/1.25 var(--body); opacity: 0.6; min-height: 1.25em; }
+.ly-cur { font: 800 clamp(22px, 3vw, 46px)/1.15 var(--display); letter-spacing: -0.01em; text-wrap: balance;
+  background: linear-gradient(95deg, var(--fg), var(--yellow)); -webkit-background-clip: text; background-clip: text; color: transparent; min-height: 1.15em; }
+
 /* ---------- phone (join) ---------- */
 .phone { max-width: 440px; margin: 0 auto; min-height: calc(100dvh - 40px); display: flex; flex-direction: column; gap: 14px; text-align: center; }
 .phone .hd { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; }

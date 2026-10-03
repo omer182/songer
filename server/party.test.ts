@@ -14,6 +14,7 @@ process.env.SESSION_SECRET = 'test-secret';
 process.env.TOKEN_ENC_KEY = 'test-key';
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'songer-test-'));
 process.env.JOIN_BASE_URL = 'http://192.168.1.20:5173';
+const READY = 2500; // GET_READY_MS
 
 const track = (n: number): Track => ({
   id: `t${n}`, uri: `spotify:track:t${n}`, title: `Song ${n}`, artists: 'Band', album: 'Album', year: 2000, image: null, durationMs: 200000,
@@ -65,7 +66,7 @@ function nextState(s: Socket, pred: (st: PartyState) => boolean): Promise<PartyS
   });
 }
 
-describe('party', () => {
+describe('party', { timeout: 20000 }, () => {
   it('rejects hosts who are not signed in', async () => {
     const anon = await client();
     const res = await ask(anon, 'host:create', { packLabel: 'x', tracks: [track(1)], teams: [{ name: 'A', color: '#f00' }, { name: 'B', color: '#0f0' }] });
@@ -99,7 +100,13 @@ describe('party', () => {
     const hostRound = nextState(host, (s) => s.phase === 'round');
     host.emit('host:action', { code, action: { type: 'start' } });
     expect((await phoneRound).song).toBeNull();
-    expect((await hostRound).song?.title).toBe('Song 1');
+    const hr = await hostRound;
+    expect(hr.song?.title).toBe('Song 1');
+    expect(hr.getReady).toBe(true);
+    expect(cues.at(-1)).toEqual({ kind: 'load', uri: 'spotify:track:t1' }); // TV loads silently first
+    p1.emit('player:buzz'); // too early: ignored during "Get ready"
+    const live = await nextState(host, (s) => s.phase === 'round' && !s.getReady);
+    expect(live.buzz).toBeNull();
     expect(cues.at(-1)).toEqual({ kind: 'clip', uri: 'spotify:track:t1', ms: 500 });
 
     // longer clip
@@ -131,7 +138,7 @@ describe('party', () => {
 
     // next song, nobody knows, skip → final
     host.emit('host:action', { code, action: { type: 'next' } });
-    const r2 = await nextState(host, (s) => s.phase === 'round' && s.songIndex === 1);
+    await nextState(host, (s) => s.phase === 'round' && s.songIndex === 1 && !s.getReady);
     // the penalised team can still buzz on the next song
     const again2 = nextState(host, (s) => s.phase === 'buzzed' && s.buzz?.teamId === 't2');
     p2.emit('player:buzz');
@@ -153,7 +160,7 @@ describe('party', () => {
     const remote = await client(hostCookie);
     const cur = await ask<PartyState>(remote, 'host:current', {});
     expect(cur.data?.code).toBe(code);
-    const remoteRound = nextState(remote, (s) => s.phase === 'round');
+    const remoteRound = nextState(remote, (s) => s.phase === 'round' && !s.getReady);
     remote.emit('host:action', { code, action: { type: 'rematch' } });
     expect((await remoteRound).song?.title).toBeTruthy(); // remotes get the answer, phones don't
     expect(cues.at(-1)).toMatchObject({ kind: 'clip', ms: 500 }); // audio still goes to the TV only
@@ -166,6 +173,7 @@ describe('party', () => {
     const rival = await client();
     const taken = await ask(rival, 'player:join', { code, name: 'Kid', teamId: '', role: 'judge' });
     expect(taken).toMatchObject({ ok: false, error: 'Abba is already the judge.' });
+    if (j.data!.state.getReady) await nextState(judge, (s) => !s.getReady);
     const judgeSees = nextState(judge, (s) => s.phase === 'reveal');
     judge.emit('judge:action', { type: 'skip' });
     expect((await judgeSees).judge).toEqual({ name: 'Abba', connected: true });

@@ -188,13 +188,14 @@ export function Join() {
     mid = (
       <button
         className="buzz"
+        disabled={state.getReady}
         onPointerDown={(e) => {
           e.preventDefault();
           buzz();
         }}
         style={{ background: `radial-gradient(circle at 35% 30%, #fff5 0, transparent 42%), ${myTeam.color}`, boxShadow: `0 10px 0 color-mix(in srgb, ${myTeam.color} 55%, #000)` }}
       >
-        BUZZ
+        {state.getReady ? 'READY' : 'BUZZ'}
       </button>
     );
   } else if (state.phase === 'buzzed' && state.buzz) {

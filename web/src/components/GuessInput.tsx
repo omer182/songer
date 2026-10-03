@@ -20,6 +20,8 @@ export function GuessInput({ onPick, onSubmit, disabled }: { onPick: (s: Suggest
   const noComplete = useRef(false); // after a delete, or while a phone keyboard is composing a word
   const composing = useRef(false);
   const selectFrom = useRef<number | null>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const [maxH, setMaxH] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (picked || dq.length < 2) {
@@ -56,6 +58,21 @@ export function GuessInput({ onPick, onSubmit, disabled }: { onPick: (s: Suggest
     }
   }, [shown]);
 
+  // The list opens above the box: give it exactly the room between the box and the top of the card (or screen),
+  // and start scrolled to the bottom, where the best match sits right next to the box.
+  useLayoutEffect(() => {
+    if (!open || !items.length || !input.current) return;
+    const box = input.current.getBoundingClientRect();
+    const card = input.current.closest('.solo, .phone')?.getBoundingClientRect();
+    const top = Math.max(card?.top ?? 0, window.visualViewport?.offsetTop ?? 0);
+    setMaxH(Math.max(120, box.top - top - 12));
+    if (list.current) list.current.scrollTop = list.current.scrollHeight;
+  }, [open, items]);
+
+  useEffect(() => {
+    list.current?.querySelector<HTMLElement>('.hl')?.scrollIntoView({ block: 'nearest' });
+  }, [hl]);
+
   const pick = (s: Suggestion) => {
     setPicked(s);
     const text = `${s.title} — ${s.artists}`;
@@ -69,8 +86,9 @@ export function GuessInput({ onPick, onSubmit, disabled }: { onPick: (s: Suggest
   return (
     <div className="guess">
       {open && items.length > 0 && !picked && (
-        <div className="ac" role="listbox">
-          {items.map((s, i) => (
+        // Rendered best-last so the best match is the row touching the input (the list sits above it).
+        <div className="ac" role="listbox" ref={list} style={{ maxHeight: maxH }}>
+          {items.map((s, i) => ({ s, i })).reverse().map(({ s, i }) => (
             <button key={s.key} role="option" aria-selected={i === hl} className={i === hl ? 'hl' : ''} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(s)}>
               <span dir="auto">{s.title}</span>
               <small dir="auto">· {s.artists}</small>
@@ -110,12 +128,13 @@ export function GuessInput({ onPick, onSubmit, disabled }: { onPick: (s: Suggest
             return;
           }
           if (!open || !items.length) return;
-          if (e.key === 'ArrowDown') {
+          // The list is drawn upward from the box: Up moves to the next match, Down back toward the box.
+          if (e.key === 'ArrowUp') {
             e.preventDefault();
-            setHl((h) => (h + 1) % items.length);
-          } else if (e.key === 'ArrowUp') {
+            setHl((h) => Math.min(h + 1, items.length - 1));
+          } else if (e.key === 'ArrowDown') {
             e.preventDefault();
-            setHl((h) => (h - 1 + items.length) % items.length);
+            setHl((h) => Math.max(h - 1, 0));
           } else if (e.key === 'Enter' || (e.key === 'Tab' && shown !== typed)) {
             e.preventDefault();
             pick(items[hl]);

@@ -151,8 +151,9 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .guess { position: relative; }
 .guess input { width: 100%; background: var(--card); border: 0; border-radius: 13px; padding: 13px 14px; box-shadow: inset 0 0 0 1.5px var(--card-2); }
 .guess input:focus { box-shadow: inset 0 0 0 1.5px var(--cyan); outline: none; }
-.ac { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); background: var(--card-2); border-radius: 13px; overflow: hidden; box-shadow: 0 -10px 30px -10px #000a; z-index: 5; }
-.ac button { display: flex; gap: 8px; width: 100%; text-align: left; padding: 9px 13px; border-bottom: 1px solid var(--card); align-items: baseline; }
+.ac { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); background: var(--card-2); border-radius: 13px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; max-height: 45vh; box-shadow: 0 -10px 30px -10px #000a; z-index: 5; }
+.ac button { display: flex; gap: 8px; width: 100%; text-align: left; padding: 10px 13px; border-bottom: 1px solid var(--card); align-items: baseline; }
+.ac button.hl { box-shadow: inset 3px 0 0 var(--cyan); }
 .ac button:last-child { border-bottom: 0; }
 .ac button:hover, .ac button.hl { background: color-mix(in srgb, var(--cyan) 20%, var(--card-2)); }
 .ac small { color: var(--muted); }
@@ -243,7 +244,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   .solo > * { flex-shrink: 0; }
   .solo .h1 { font-size: 23px; }
   /* the six tries share whatever height is left */
-  .solo .tries { flex: 1 1 0; min-height: 0; display: grid; grid-template-rows: repeat(6, minmax(0, 1fr)); gap: 4px; }
+  .solo .tries { flex: 1 1 0; min-height: 0; display: grid; grid-template-rows: repeat(6, minmax(0, 40px)); align-content: start; gap: 4px; }
   .solo .try { min-height: 0; max-height: 40px; padding: 2px 10px; font-size: 13px; }
   .solo .playbtn { width: 58px; height: 58px; margin: 0 auto; }
   .solo .playbtn::after { border-left-width: 17px; border-top-width: 10px; border-bottom-width: 10px; margin-left: 5px; }

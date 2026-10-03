@@ -62,6 +62,15 @@ describe('isCorrect with Spotify IDs', () => {
   });
 });
 
+describe('sameArtist', () => {
+  it('matches by ID or by name', async () => {
+    const { sameArtist } = await import('./match.js');
+    expect(sameArtist({ title: 'X', artists: 'Eyal Levi', artistIds: ['a1'] }, { title: 'Y', artists: 'אייל לוי', artistIds: ['a1'] })).toBe(true);
+    expect(sameArtist({ title: 'X', artists: 'The Strokes' }, { title: 'Y', artists: 'Strokes, Someone' })).toBe(true);
+    expect(sameArtist({ title: 'X', artists: 'A', artistIds: ['a1'] }, { title: 'Y', artists: 'B', artistIds: ['b1'] })).toBe(false);
+  });
+});
+
 describe('LIVE', () => {
   it('spots live versions in English and Hebrew', async () => {
     const { LIVE } = await import('./match.js');

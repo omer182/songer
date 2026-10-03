@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MAX_STAGE, STAGES_MS, type Source, type Suggestion, type Track } from '../../../shared/types';
-import { isCorrect } from '../../../shared/match';
+import { isCorrect, sameArtist } from '../../../shared/match';
 import { api, sourceLabel } from '../lib/api';
 import { player } from '../lib/player';
 import { useKeys, usePlayerStatus } from '../lib/hooks';
@@ -11,7 +11,8 @@ import { GuessInput } from '../components/GuessInput';
 import { TopBar } from './Home';
 import { celebrate } from '../lib/celebrate';
 
-type Try = { type: 'skip' } | { type: 'miss' | 'win'; guess: Suggestion };
+/** artist: a wrong song, but by the right artist (shown in yellow). */
+type Try = { type: 'skip' } | { type: 'miss' | 'win'; guess: Suggestion; artist?: boolean };
 interface SongResult {
   track: Track;
   tries: Try[];
@@ -117,7 +118,8 @@ export function Solo() {
 
   function submit() {
     if (!guess || !track) return;
-    advance({ type: isCorrect(guess, track) ? 'win' : 'miss', guess });
+    const win = isCorrect(guess, track);
+    advance({ type: win ? 'win' : 'miss', guess, artist: !win && sameArtist(guess, track) });
   }
 
   /** Skip this song entirely (bad intro, or you'd rather not): straight to the next one, no points. */
@@ -168,10 +170,11 @@ export function Solo() {
             </div>
           );
         return (
-          <div key={k} className="try">
-            <span className={t.type === 'win' ? 'ok' : 'x'}>{t.type === 'win' ? '✓' : '✕'}</span>
+          <div key={k} className={`try ${t.type === 'miss' && t.artist ? 'artist' : ''}`} title={t.type === 'miss' && t.artist ? 'Right artist, wrong song' : undefined}>
+            <span className={t.type === 'win' ? 'ok' : t.artist ? 'half' : 'x'}>{t.type === 'win' ? '✓' : t.artist ? '≈' : '✕'}</span>
             <span className="t" dir="auto">{t.guess.title}</span>
             <span className="k t" style={{ marginLeft: 'auto' }} dir="auto">{t.guess.artists}</span>
+            {t.type === 'miss' && t.artist && <span className="artist-tag">right artist</span>}
           </div>
         );
       })}
@@ -223,7 +226,7 @@ export function Solo() {
                   <div className="sq">
                     {STAGES_MS.map((_, k) => {
                       const t = r.tries[k];
-                      return <i key={k} className={t ? (t.type === 'miss' ? 'm' : t.type === 'skip' ? 's' : 'g') : ''} />;
+                      return <i key={k} className={t ? (t.type === 'miss' ? (t.artist ? 'a' : 'm') : t.type === 'skip' ? 's' : 'g') : ''} />;
                     })}
                   </div>
                 )}

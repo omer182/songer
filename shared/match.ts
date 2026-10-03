@@ -71,6 +71,13 @@ export function isCorrect(guess: SongRef, answer: SongRef): boolean {
   return artistList(guess.artists).some((x) => a.has(x));
 }
 
+/** Same artist (any of them), by Spotify ID when both sides have IDs, else by normalized name. */
+export function sameArtist(guess: SongRef, answer: SongRef): boolean {
+  if (guess.artistIds?.length && answer.artistIds?.length) return guess.artistIds.some((x) => answer.artistIds!.includes(x));
+  const a = new Set(artistList(answer.artists));
+  return artistList(guess.artists).some((x) => a.has(x));
+}
+
 /** Every query token must appear in the haystack (already normBasic'd). */
 export function matchesQuery(haystack: string, query: string): boolean {
   const tokens = normBasic(query).split(' ').filter(Boolean);

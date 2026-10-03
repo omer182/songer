@@ -29,6 +29,16 @@ export function normTitle(title: string): string {
   return n || normBasic(title);
 }
 
+/** Live recordings, in English or Hebrew (\b only works for Latin letters, so Hebrew gets its own pattern). */
+export const LIVE = /\blive\b|(^|[\s([\-])(לייב|הופעה|גרסה חיה|בהופעה)($|[\s)\]\-])/i;
+
+/** Versions that make a bad "name that tune" clip: sessions, demos, remixes, acoustic takes, commentary. */
+export const ODD_VERSION =
+  /\b(recorded at|session|sessions|demo|acoustic|unplugged|remix|remixed|instrumental|karaoke|commentary|interview|rehearsal|a cappella|acapella)\b/i;
+
+/** A title worth putting in a game: not live, not an odd version, and an actual name. */
+export const isGameVersion = (title: string) => !LIVE.test(title) && !ODD_VERSION.test(title) && title.trim() !== '' && !/^[\s\-–—]/.test(title);
+
 export function normArtist(artist: string): string {
   return normBasic(artist.replace(/^the\s+/i, ''));
 }

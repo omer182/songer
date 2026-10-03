@@ -1,6 +1,6 @@
 import { db, tx } from './db.js';
 import { allPages, api, pickImage, SpotifyError, toTrack, type SpAlbumLite, type SpTrack } from './spotify.js';
-import { matchesQuery, normBasic, songKey } from '../shared/match.js';
+import { isGameVersion, LIVE, matchesQuery, normBasic, songKey } from '../shared/match.js';
 import { deezerPlaylistTracks, resolveOnSpotify } from './deezer.js';
 import type { ArtistInfo, LibraryStatus, PlaylistInfo, Source, Suggestion, TopRange, Track } from '../shared/types.js';
 
@@ -218,7 +218,7 @@ async function ensureArtist(userId: string, id: string) {
   const tracks: Track[] = [];
   for (const al of full) {
     for (const t of al.tracks.items) {
-      if (!t.artists.some((a) => a.id === id)) continue;
+      if (!t.artists.some((a) => a.id === id) || LIVE.test(t.name)) continue;
       const tr = toTrack(t, al);
       if (!tr) continue;
       const key = songKey(tr);
@@ -284,11 +284,83 @@ async function deezerPool(userId: string, id: string, count: number): Promise<Tr
   return out;
 }
 
+/**
+ * The artist's songs, most popular first. Spotify no longer exposes popularity or "top tracks" to personal apps,
+ * but its search ranks results by how much they're played, so an artist-filtered search reads like their hits list.
+ */
+async function rankedArtistSongs(userId: string, artistId: string, artistName: string): Promise<Track[]> {
+  const out: Track[] = [];
+  const seen = new Set<string>();
+  for (let offset = 0; offset < 50; offset += 10) {
+    const r = await api<{ tracks: { items: (SpTrack | null)[] } }>(
+      userId,
+      `/search?type=track&limit=10&offset=${offset}&q=${encodeURIComponent(`artist:"${artistName}"`)}`,
+    );
+    for (const sp of r.tracks.items) {
+      if (!sp || !sp.artists.some((a) => a.id === artistId) || !isGameVersion(sp.name)) continue;
+      const t = toTrack(sp);
+      if (!t) continue;
+      const k = songKey(t);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(t);
+    }
+    if (r.tracks.items.length < 10) break;
+  }
+  return out;
+}
+
+/**
+ * A band's game: mostly their hits, never live versions. At least 5 songs (or ~60% of the game) come from the
+ * band's 15 most popular, the rest from the next most popular; the full catalogue only fills gaps.
+ */
+async function artistPool(userId: string, artistId: string, artistName: string | undefined, count: number): Promise<Track[]> {
+  await ensureArtist(userId, artistId);
+  const catalog = tracksForSource(userId, `artist:${artistId}`).filter((t) => isGameVersion(t.title));
+  const name =
+    artistName ||
+    (db.prepare('SELECT name FROM artists WHERE user_id = ? AND id = ?').get(userId, artistId) as { name: string } | undefined)?.name ||
+    catalog[0]?.artists.split(', ')[0];
+  let ranked: Track[] = [];
+  try {
+    if (name) ranked = await rankedArtistSongs(userId, artistId, name);
+  } catch (e) {
+    console.warn(`Popularity ranking unavailable for ${artistId}:`, e instanceof Error ? e.message : e);
+  }
+
+  const hits = ranked.slice(0, 15);
+  const nextBest = ranked.slice(15);
+  const hitCount = Math.min(hits.length, Math.max(5, Math.round(count * 0.6)));
+  const chosen = shuffle(hits).slice(0, hitCount);
+  const used = new Set(chosen.map(songKey));
+  const take = (list: Track[]) => {
+    for (const t of shuffle(list)) {
+      if (chosen.length >= count) return;
+      const k = songKey(t);
+      if (!used.has(k)) {
+        used.add(k);
+        chosen.push(t);
+      }
+    }
+  };
+  take(nextBest);
+  take(hits); // small bands may not have enough "next best" songs
+  take(catalog);
+  if (!chosen.length) throw new SpotifyError(404, 'No playable songs found for this artist.');
+  // Keep them in the guess index.
+  tx(() => {
+    for (const t of chosen) upsertTrack.run(t.id, t.uri, t.title, t.artists, t.artistIds.join(','), t.album, t.year, t.image, t.durationMs, normBasic(`${t.title} ${t.artists}`));
+    const ins = db.prepare('INSERT OR IGNORE INTO user_tracks (user_id, track_id, source, pos) VALUES (?, ?, ?, 0)');
+    for (const t of chosen) ins.run(userId, t.id, `artist:${artistId}`);
+  });
+  return shuffle(chosen);
+}
+
 /** Pick `count` random, de-duplicated songs from a source, loading it from Spotify if needed. */
 export async function buildPool(userId: string, source: Source, count: number): Promise<Track[]> {
   if (source.type === 'deezer') return deezerPool(userId, source.id, count);
+  if (source.type === 'artist') return artistPool(userId, source.id, source.name, count);
   if (source.type === 'playlist') await ensurePlaylist(userId, source.id);
-  if (source.type === 'artist') await ensureArtist(userId, source.id);
   if (source.type === 'album') await ensureAlbum(userId, source.id);
   if (['top', 'liked', 'recent'].includes(source.type) && !syncedAt(userId, sourceKey(source))) await syncLibrary(userId);
   const seen = new Set<string>();

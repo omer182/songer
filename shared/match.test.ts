@@ -61,3 +61,19 @@ describe('isCorrect with Spotify IDs', () => {
     expect(isCorrect({ trackId: 'trk3', title: 'מעולה', artists: 'מישהו אחר', artistIds: ['art9'] }, answer)).toBe(false);
   });
 });
+
+describe('LIVE', () => {
+  it('spots live versions in English and Hebrew', async () => {
+    const { LIVE } = await import('./match.js');
+    for (const t of ['Adam\'s Song - Live', 'Song (Live at Wembley)', 'שיר - לייב', 'שיר (הופעה חיה)', 'בהופעה בקיסריה']) expect(LIVE.test(t)).toBe(true);
+    for (const t of ['Alive', 'Oliver', 'Delivery', 'חי', 'עם ישראל חי', 'Liverpool']) expect(LIVE.test(t)).toBe(false);
+  });
+});
+
+describe('isGameVersion', () => {
+  it('keeps normal songs and drops odd versions', async () => {
+    const { isGameVersion } = await import('./match.js');
+    for (const x of ['505', 'R U Mine?', 'הלוואי', "Adam's Song"]) expect(isGameVersion(x)).toBe(true);
+    for (const x of ['- - Recorded at Electric Lady Studios, New York', 'Song - Acoustic', 'Song (Demo)', 'Song - Live', 'Song (Commentary)']) expect(isGameVersion(x)).toBe(false);
+  });
+});

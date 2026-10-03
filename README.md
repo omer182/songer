@@ -89,7 +89,7 @@ npm start            # run the production build on :5100
 
 ### Solo
 
-Home → **Solo** → pick **Top tracks** (4 weeks / 6 months / all time), **Liked Songs**, **A band**, **A playlist** (your own) or **Recently played** → 5, 10 or 15 songs.
+Home → **Solo** → pick **Top tracks** (4 weeks / 6 months / all time), **Liked Songs**, **A band** (mostly their hits, no live versions), **My playlists**, **Find a playlist** (any public playlist, via Deezer; songs play from Spotify) or **Recently played** → 5, 10 or 15 songs.
 
 Each song: the 0.5s clip plays automatically. Type to search, pick a suggestion, **Guess**; or **Skip** to hear more. Solved on try 1 = 6 points … try 6 = 1 point. `Space` replays the clip.
 
@@ -190,7 +190,7 @@ Spotify locked down personal ("Development mode") apps in 2024 to 2026. What tha
 - **5 Spotify accounts max per app; the owner needs Premium.** Fine for a single-household app.
 - **No 30-second previews**: audio only through the Web Playback SDK (Premium, desktop browser).
 - **Only playlists you own** (or collaborate on) return their songs; other people's and Spotify-made playlists return 403. To play one, copy its songs into a playlist of yours.
-- **Artist albums: max 10 per request** (undocumented; 20+ returns "Invalid limit"). **Search: max 10 results.** No batch album/track endpoints, no "artist top tracks", no popularity.
+- **Artist albums: max 10 per request** (undocumented; 20+ returns "Invalid limit"). **Search: max 10 results.** No batch album/track endpoints, no "artist top tracks", no popularity. Band games still favour hits: an artist-filtered search comes back ordered by plays, so Songer takes at least 5 songs (about 60%) from the top 15 of that order, never live, session or demo versions.
 - **Hebrew names**: requests send `Accept-Language: he`, so Israeli artists come back as "אייל לוי" instead of "Eyal Levi"; international names are unaffected. Spotify search also matches transliteration ("kulam ganavim" → כולם גנבים).
 - Spotify's developer policy doesn't allow quiz games in public apps; keep this private.
 

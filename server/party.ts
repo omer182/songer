@@ -3,7 +3,7 @@ import type { Server, Socket } from 'socket.io';
 import { config } from './config.js';
 import { userIdFromCookieHeader } from './auth.js';
 import {
-  ARTIST_POINTS, MAX_STAGE, PARTY_POINTS, STAGES_MS,
+  ARTIST_POINTS, MAX_STAGE, PARTY_POINTS, STAGES_MS, WRONG_PENALTY,
   type Ack, type CreatePartyPayload, type HostAction, type PartyCue, type PartyPhase, type PartyState, type PartyTeam, type Track,
 } from '../shared/types.js';
 
@@ -78,7 +78,7 @@ export function attachParty(io: Server) {
     const showSong = forHost ? r.phase !== 'lobby' : r.phase === 'reveal';
     return {
       code: r.code,
-      joinUrl: `${config.joinBaseUrl}/join/${r.code}`,
+      joinUrl: `${config.joinBaseUrl}/play/${r.code}`,
       phase: r.phase,
       packLabel: r.packLabel,
       teams: r.teams.map((t) => ({
@@ -110,7 +110,6 @@ export function attachParty(io: Server) {
 
   function beginRound(r: Room) {
     Object.assign(r, { phase: 'round', stage: 0, buzz: null, last: null, toast: null, roundStartedAt: Date.now() });
-    r.teams.forEach((t) => (t.locked = false));
     broadcast(r);
     cue(r, { kind: 'clip', uri: current(r).uri, ms: STAGES_MS[0] });
   }
@@ -156,11 +155,11 @@ export function attachParty(io: Server) {
           t.score += ARTIST_POINTS;
           return reveal(r, t.id, ARTIST_POINTS, true);
         }
-        t.locked = true;
+        // Wrong: a point off, and everyone (them included) can buzz again.
+        t.score -= WRONG_PENALTY;
         r.buzz = null;
-        if (r.teams.every((x) => x.locked)) return reveal(r, null, 0);
         r.phase = 'round';
-        r.toast = `${t.name} is out for this song. Other teams can steal.`;
+        r.toast = `${t.name} −${WRONG_PENALTY}. Keep guessing, anyone can buzz!`;
         return broadcast(r);
       }
       case 'next':
@@ -212,7 +211,7 @@ export function attachParty(io: Server) {
         hostUserId: userId,
         packLabel: clean(p.packLabel, 60) || 'Mixed',
         tracks,
-        teams: teams.map((t, i) => ({ id: `t${i + 1}`, name: clean(t.name, 24) || `Team ${i + 1}`, color: clean(t.color, 32), score: 0, locked: false, members: [] })),
+        teams: teams.map((t, i) => ({ id: `t${i + 1}`, name: clean(t.name, 24) || `Team ${i + 1}`, color: clean(t.color, 32), score: 0, members: [] })),
         players: new Map(),
         judge: null,
         phase: 'lobby',
@@ -303,7 +302,7 @@ export function attachParty(io: Server) {
       if (!joined) return;
       const { room: r, player } = joined;
       const t = r.teams.find((x) => x.id === player.teamId);
-      if (!rooms.has(r.code) || r.phase !== 'round' || !t || t.locked) return;
+      if (!rooms.has(r.code) || r.phase !== 'round' || !t) return;
       const seconds = Math.round((Date.now() - r.roundStartedAt) / 100) / 10;
       r.phase = 'buzzed';
       r.toast = null;

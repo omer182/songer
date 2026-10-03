@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import QRCode from 'qrcode';
 import confetti from 'canvas-confetti';
-import { MAX_STAGE, PARTY_POINTS, STAGES_MS, type HostAction, type PartyCue, type PartyState, type Source } from '../../../shared/types';
+import { MAX_STAGE, PARTY_POINTS, STAGES_MS, WRONG_PENALTY, type HostAction, type PartyCue, type PartyState, type Source } from '../../../shared/types';
 import { api, sourceLabel } from '../lib/api';
 import { player } from '../lib/player';
 import { getSocket, request } from '../lib/socket';
@@ -180,7 +180,7 @@ export function PartyHost() {
     <div className="tv-r">
       <span className="eyebrow">Scores</span>
       {st.teams.map((t) => (
-        <div key={t.id} className={`team ${maxScore > 0 && t.score === maxScore ? 'lead' : ''} ${t.locked && st.phase !== 'reveal' ? 'locked' : ''}`}>
+        <div key={t.id} className={`team ${maxScore > 0 && t.score === maxScore ? 'lead' : ''} `}>
           <span className="sw" style={{ background: t.color }} />
           <div>
             <div className="nm">{t.name}</div>
@@ -324,7 +324,7 @@ export function PartyHost() {
               <>
                 {b(`✓ Song +${PARTY_POINTS[st.stage]}`, { type: 'judge', verdict: 'song' }, 'green', 'Enter')}
                 {b('Artist only +1', { type: 'judge', verdict: 'artist' }, 'ghost', 'A')}
-                {b('✕ Wrong', { type: 'judge', verdict: 'wrong' }, 'red', 'X')}
+                {b(`✕ Wrong −${WRONG_PENALTY}`, { type: 'judge', verdict: 'wrong' }, 'red', 'X')}
               </>
             )}
             {st.phase === 'reveal' && b(st.songIndex + 1 < st.songCount ? 'Next song' : 'Final scores', { type: 'next' }, 'yellow', 'Space')}

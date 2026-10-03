@@ -105,7 +105,7 @@ export function Join() {
             <h1 className="h1">Join a party</h1>
             <p className="muted" style={{ margin: 0 }}>Type the 4-letter code on the TV.</p>
             <input className="field mono center" style={{ fontSize: 28, letterSpacing: '0.2em' }} maxLength={4} value={entry} onChange={(e) => setEntry(e.target.value.toUpperCase())} autoFocus />
-            <button className="btn lg" style={{ width: '100%' }} disabled={entry.length !== 4} onClick={() => nav(`/join/${entry}`)}>Join</button>
+            <button className="btn lg" style={{ width: '100%' }} disabled={entry.length !== 4} onClick={() => nav(`/play/${entry}`)}>Join</button>
           </div>
         </div>
       </div>
@@ -188,14 +188,13 @@ export function Join() {
     mid = (
       <button
         className="buzz"
-        disabled={myTeam.locked}
         onPointerDown={(e) => {
           e.preventDefault();
           buzz();
         }}
         style={{ background: `radial-gradient(circle at 35% 30%, #fff5 0, transparent 42%), ${myTeam.color}`, boxShadow: `0 10px 0 color-mix(in srgb, ${myTeam.color} 55%, #000)` }}
       >
-        {myTeam.locked ? 'OUT' : 'BUZZ'}
+        BUZZ
       </button>
     );
   } else if (state.phase === 'buzzed' && state.buzz) {
@@ -207,7 +206,7 @@ export function Join() {
         <div className="muted">Say the song out loud</div>
       </div>
     ) : (
-      <div className="mid"><div className="h2" style={{ color: other?.color }}>{other?.name} buzzed…</div><div className="muted small">If they're wrong, you can steal.</div></div>
+      <div className="mid"><div className="h2" style={{ color: other?.color }}>{other?.name} buzzed…</div><div className="muted small">If they're wrong, everyone can buzz again.</div></div>
     );
   } else if (state.phase === 'reveal') {
     const got = state.last?.teamId === myTeam.id;

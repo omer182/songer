@@ -1,11 +1,16 @@
 // Types shared by the API server and the web app.
 
+/** Socket.IO endpoint. Under /play so guests need only one public path (/play/*). */
+export const SOCKET_PATH = '/play/socket.io';
+
 /** Clip lengths for each try / party stage, in milliseconds. */
 export const STAGES_MS = [500, 1000, 2000, 4000, 8000, 15000] as const;
 export const MAX_STAGE = STAGES_MS.length - 1;
 /** Party points for a correct song at each stage; naming only the artist earns ARTIST_POINTS. */
 export const PARTY_POINTS = [5, 4, 3, 2, 1, 1] as const;
 export const ARTIST_POINTS = 1;
+/** A wrong answer costs the team this much (scores can go below zero); the team stays in the round. */
+export const WRONG_PENALTY = 1;
 
 export interface Track {
   id: string;
@@ -86,7 +91,6 @@ export interface PartyTeam {
   name: string;
   color: string;
   score: number;
-  locked: boolean;
   members: PartyMember[];
 }
 

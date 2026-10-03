@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MAX_STAGE, PARTY_POINTS, STAGES_MS, type HostAction, type PartyState } from '../../../shared/types';
+import { MAX_STAGE, PARTY_POINTS, STAGES_MS, WRONG_PENALTY, type HostAction, type PartyState } from '../../../shared/types';
 import { getSocket, request } from '../lib/socket';
 import { Art, Logo } from '../components/bits';
 
@@ -128,7 +128,7 @@ export function HostPanel({ state, act: send, role }: { state: PartyState; act: 
               {big(`✓ Song +${PARTY_POINTS[st.stage]}`, { type: 'judge', verdict: 'song' }, 'green')}
               <div className="row">
                 <button className="btn ghost grow" onClick={() => act({ type: 'judge', verdict: 'artist' })}>Artist only +1</button>
-                <button className="btn red grow" onClick={() => act({ type: 'judge', verdict: 'wrong' })}>✕ Wrong</button>
+                <button className="btn red grow" onClick={() => act({ type: 'judge', verdict: 'wrong' })}>✕ Wrong −{WRONG_PENALTY}</button>
               </div>
             </>
           )}
@@ -139,7 +139,7 @@ export function HostPanel({ state, act: send, role }: { state: PartyState; act: 
         <div className="stack tight">
           <span className="eyebrow">Scores</span>
           {st.teams.map((t) => (
-            <div key={t.id} className="row" style={{ background: 'var(--card)', borderRadius: 10, padding: '8px 12px', opacity: t.locked && st.phase !== 'reveal' ? 0.45 : 1 }}>
+            <div key={t.id} className="row" style={{ background: 'var(--card)', borderRadius: 10, padding: '8px 12px' }}>
               <span style={{ width: 10, height: 22, borderRadius: 3, background: t.color }} />
               <span className="grow" style={{ fontWeight: 600 }}>{t.name}</span>
               <span className="muted small">{t.members.length} 👤</span>

@@ -5,7 +5,7 @@ Name-that-tune on your own Spotify library. You hear the first **half-second** o
 Two ways to play:
 
 - **Solo**: pick a source and guess song by song. Type-ahead suggestions search your library and all of Spotify, in Hebrew or English.
-- **Party**: a laptop on the TV plays the music. Everyone scans a QR code, picks a team, and their phone becomes a **buzzer**. First team to buzz answers out loud; a judge decides; wrong answers lock the team out and the others can steal.
+- **Party**: a laptop on the TV plays the music. Everyone scans a QR code, picks a team, and their phone becomes a **buzzer**. First team to buzz answers out loud; a judge decides; a wrong answer costs 1 point and everyone can buzz again.
 
 Self-hosted on the homeserver at **https://songer.omersher.com**. A single-household app: only the owner signs in with Spotify; party guests need no account. To run your own, create your own Spotify app (below).
 
@@ -31,7 +31,7 @@ Self-hosted on the homeserver at **https://songer.omersher.com**. A single-house
 ```
  Laptop on the TV (Chrome)                     Phones (any browser)
  ┌────────────────────────────┐                ┌───────────────────────┐
- │ React app                  │                │ /join/CODE            │
+ │ React app                  │                │ /play/CODE            │
  │ Spotify Web Playback SDK ──┼─ audio ◄── Spotify    team buzzer, or   │
  │  (tab = device "Songer")   │                │  judge: answer + controls
  └──────────┬─────────────────┘                └──────────┬────────────┘
@@ -71,7 +71,7 @@ Once, at https://developer.spotify.com/dashboard:
 ```bash
 cp .env.example .env     # fill SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET; generate the two secrets as shown in the file
 npm install
-npm run dev              # API on :5100, web on :5173 (Vite proxies /api and /socket.io)
+npm run dev              # API on :5100, web on :5173 (Vite proxies /api and /play/socket.io)
 ```
 
 Open **http://127.0.0.1:5173** (not `localhost`, or the sign-in cookie won't match the redirect).
@@ -97,7 +97,7 @@ Each song: the 0.5s clip plays automatically. Type to search, pick a suggestion,
 
 1. Connect the laptop to the TV. In Spotify, turn on a **Private Session** (so the party doesn't change your recommendations) and keep the Spotify app on your phone closed (it would show the song name).
 2. Home → **Party** → pick the music, number of songs, and 2 to 4 teams → **Open lobby on TV** → **Fullscreen** (`F`).
-3. Guests scan the QR (or open `/join` and type the 4-letter code), type a name and pick a team.
+3. Guests scan the QR (or open `/play` and type the 4-letter code), type a name and pick a team.
 4. **Judge**: someone needs to see the answers to rule on shouted guesses. Any of these works, at the same time:
    - **One guest as judge**: on the join screen pick **Be the judge**. Their phone shows the answer and all controls. One judge per party; the TV shows who it is, and the laptop's "Judge: name ✕" button removes them. Judges can't end the party.
    - **Your phone as host remote**: on the laptop, **📱 Host remote** shows a one-time QR (5 minutes) that signs your phone in as you; it shows answers and controls.
@@ -108,7 +108,7 @@ Each song: the 0.5s clip plays automatically. Type to search, pick a suggestion,
 | `Space` | lobby / round / reveal | start / longer clip / next song |
 | `Enter` | someone buzzed | correct song (5 → 1 points, fewer for longer clips) |
 | `A` | someone buzzed | artist only (+1) |
-| `X` | someone buzzed | wrong: team is out for this song, others can steal |
+| `X` | someone buzzed | wrong: −1 point for that team; the clip continues and anyone can buzz again |
 | `R` | round | replay the clip |
 | `S` | round | skip the song (reveal, no points) |
 | `F` | any | fullscreen |
@@ -145,11 +145,20 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"   # run
 
 Keep `TOKEN_ENC_KEY` stable: changing it makes the stored Spotify login unreadable (you'd just sign in again).
 
-### 4. Nginx Proxy Manager
+### 4. Let party guests in (only `/play`)
+
+Everything a guest's phone needs (the join/judge page, its files and the live connection) is under **`/play/*`**: the page at `/play/CODE`, built files at `/play/assets/*`, Socket.IO at `/play/socket.io`. If the rest of the site is behind an access rule, open just that path:
+
+- **Cloudflare Access**: add an application for `songer.omersher.com/play/*` with a **Bypass → Everyone** policy (the more specific path wins).
+- **Nginx Proxy Manager access list**: add a Custom Location `/play` → `songer:5100` without the access list (websockets on).
+
+Everything else (sign-in, library, solo, party setup, `/api/*`, the host remote) stays private. The server still enforces that only the signed-in host can create or run a party.
+
+### 5. Nginx Proxy Manager
 
 Proxy host **`songer.omersher.com`** → scheme `http`, forward host **`songer`** (or the server's IP), port **`5100`**, **Websockets Support ON** (party buzzers need it), Block Common Exploits on; SSL: Let's Encrypt, Force SSL, HTTP/2.
 
-### 5. Update
+### 6. Update
 
 Push to `main`, wait for the green Actions run, then in Portainer open the stack → **Pull and redeploy**. A party in progress ends on redeploy (rooms are in memory).
 

@@ -1,10 +1,11 @@
 import { io, type Socket } from 'socket.io-client';
+import { SOCKET_PATH } from '../../../shared/types';
 
 let socket: Socket | null = null;
 
 /** One shared Socket.IO connection to the same origin (Vite proxies it in dev). */
 export function getSocket(): Socket {
-  if (!socket) socket = io({ transports: ['websocket', 'polling'] });
+  if (!socket) socket = io({ path: SOCKET_PATH, transports: ['websocket', 'polling'] });
   return socket;
 }
 

@@ -14,7 +14,7 @@ import {
 } from './library.js';
 import { attachParty } from './party.js';
 import { searchDeezerPlaylists } from './deezer.js';
-import type { Me, Source } from '../shared/types.js';
+import { SOCKET_PATH, type Me, type Source } from '../shared/types.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -179,11 +179,13 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 const webDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web');
 if (fs.existsSync(path.join(webDir, 'index.html'))) {
   app.use(express.static(webDir, { index: false, maxAge: '1h' }));
-  app.get(/^(?!\/api|\/socket\.io).*/, (_req, res) => res.sendFile(path.join(webDir, 'index.html')));
+  // Old /join links (printed QR codes) keep working.
+  app.get(/^\/join(\/.*)?$/, (req, res) => res.redirect(301, req.path.replace(/^\/join/, '/play')));
+  app.get(/^(?!\/api|\/play\/socket\.io).*/, (_req, res) => res.sendFile(path.join(webDir, 'index.html')));
 }
 
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: false } });
+const io = new Server(server, { path: SOCKET_PATH, cors: { origin: false } });
 attachParty(io);
 
 server.listen(config.port, () => {

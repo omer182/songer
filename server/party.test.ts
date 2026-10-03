@@ -85,7 +85,7 @@ describe('party', () => {
     expect(created.ok).toBe(true);
     const code = created.data!.code;
     expect(code).toMatch(/^[A-Z]{4}$/);
-    expect(created.data!.joinUrl).toBe(`http://192.168.1.20:5173/join/${code}`);
+    expect(created.data!.joinUrl).toBe(`http://192.168.1.20:5173/play/${code}`);
 
     const p1 = await client();
     const p2 = await client();
@@ -115,11 +115,10 @@ describe('party', () => {
     expect(b.buzz).toMatchObject({ teamId: 't2', playerName: 'Dana' });
     expect(cues.at(-1)).toEqual({ kind: 'stop' });
 
-    // wrong: Cousins locked, Savta steals and gets stage-1 points (4)
+    // wrong: Cousins lose a point but stay in; Savta buzzes next and gets stage-1 points (4)
     host.emit('host:action', { code, action: { type: 'judge', verdict: 'wrong' } });
     const back = await nextState(host, (s) => s.phase === 'round');
-    expect(back.teams.find((t) => t.id === 't2')!.locked).toBe(true);
-    p2.emit('player:buzz'); // locked, ignored
+    expect(back.teams.find((t) => t.id === 't2')!.score).toBe(-1);
     p1.emit('player:buzz');
     await nextState(host, (s) => s.phase === 'buzzed' && s.buzz?.teamId === 't1');
     const phoneReveal = nextState(p1, (s) => s.phase === 'reveal');
@@ -133,7 +132,12 @@ describe('party', () => {
     // next song, nobody knows, skip → final
     host.emit('host:action', { code, action: { type: 'next' } });
     const r2 = await nextState(host, (s) => s.phase === 'round' && s.songIndex === 1);
-    expect(r2.teams.every((t) => !t.locked)).toBe(true);
+    // the penalised team can still buzz on the next song
+    const again2 = nextState(host, (s) => s.phase === 'buzzed' && s.buzz?.teamId === 't2');
+    p2.emit('player:buzz');
+    await again2;
+    host.emit('host:action', { code, action: { type: 'judge', verdict: 'wrong' } });
+    expect((await nextState(host, (s) => s.phase === 'round')).teams.find((t) => t.id === 't2')!.score).toBe(-2);
     host.emit('host:action', { code, action: { type: 'skip' } });
     await nextState(host, (s) => s.phase === 'reveal' && s.songIndex === 1);
     host.emit('host:action', { code, action: { type: 'next' } });

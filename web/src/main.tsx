@@ -1,6 +1,6 @@
 import { StrictMode, createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import type { Me } from '../../shared/types';
 import { api } from './lib/api';
 import { Login } from './pages/Login';
@@ -33,11 +33,18 @@ function Authed({ children }: { children: ReactNode }) {
   return <MeContext.Provider value={{ me, signOut }}>{children}</MeContext.Provider>;
 }
 
+/** Old /join/CODE links go to /play/CODE. */
+function JoinRedirect() {
+  const { code } = useParams();
+  return <Navigate to={code ? `/play/${code}` : '/play'} replace />;
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/join/:code?" element={<Join />} />
+        <Route path="/play/:code?" element={<Join />} />
+        <Route path="/join/:code?" element={<JoinRedirect />} />
         <Route path="/solo" element={<Authed><Solo /></Authed>} />
         <Route path="/party" element={<Authed><PartyHost /></Authed>} />
         <Route path="/remote" element={<Authed><Remote /></Authed>} />

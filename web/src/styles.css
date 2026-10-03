@@ -202,7 +202,6 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .team .mb .off { opacity: 0.45; }
 .team .sc { font: 800 clamp(24px, 2.6vw, 40px) var(--mono); }
 .team.lead { box-shadow: inset 0 0 0 2px var(--yellow); }
-.team.locked { opacity: 0.4; }
 .buzzcard { border-radius: 18px; padding: clamp(14px, 1.8vw, 24px); display: grid; gap: 6px; animation: pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1); }
 @keyframes pop { from { transform: scale(0.85); opacity: 0; } }
 .buzzcard b { font: 800 clamp(26px, 3.8vw, 56px)/1 var(--display); }

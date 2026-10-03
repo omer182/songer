@@ -5,14 +5,15 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   root: 'web',
   plugins: [react()],
-  build: { outDir: '../dist/web', emptyOutDir: true },
+  // Built files go under /play/assets so party guests need only one public path (/play/*).
+  build: { outDir: '../dist/web', emptyOutDir: true, assetsDir: 'play/assets' },
   server: {
-    host: true, // phones on the LAN can reach /join in dev
+    host: true, // phones on the LAN can reach /play in dev
     port: 5173,
     strictPort: true,
     proxy: {
       '/api': 'http://127.0.0.1:5100',
-      '/socket.io': { target: 'http://127.0.0.1:5100', ws: true },
+      '/play/socket.io': { target: 'http://127.0.0.1:5100', ws: true },
     },
   },
   test: { root: '.', include: ['shared/**/*.test.ts', 'server/**/*.test.ts'] },

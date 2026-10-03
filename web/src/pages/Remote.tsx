@@ -44,7 +44,7 @@ export function Remote() {
 
   if (!state) {
     return (
-      <div className="page">
+      <div className="page fit">
         <div className="phone">
           <div className="hd"><Logo size="sm" link={false} /><span className="mono muted">Host remote</span></div>
           <div className="mid">
@@ -74,7 +74,7 @@ export function HostPanel({ state, act: send, role }: { state: PartyState; act: 
   );
 
   return (
-    <div className="page">
+    <div className="page fit">
       <div className="phone" style={{ textAlign: 'left', minHeight: 'auto' }}>
         <div className="hd">
           <Logo size="sm" link={false} />

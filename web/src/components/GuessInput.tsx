@@ -1,17 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Suggestion } from '../../../shared/types';
 import { api } from '../lib/api';
 import { useDebounced } from '../lib/hooks';
 
-/** Type-ahead over your library plus all of Spotify. Calls onPick with the chosen song. */
+/**
+ * Type-ahead over your library plus all of Spotify. While you type, the closest song title is completed
+ * inline (the added part is selected, so typing on simply replaces it, and Enter takes it).
+ * Picking a song closes the phone keyboard.
+ */
 export function GuessInput({ onPick, onSubmit, disabled }: { onPick: (s: Suggestion | null) => void; onSubmit?: () => void; disabled?: boolean }) {
-  const [q, setQ] = useState('');
+  const [typed, setTyped] = useState(''); // what the player actually typed
+  const [shown, setShown] = useState(''); // typed + inline completion
   const [picked, setPicked] = useState<Suggestion | null>(null);
   const [items, setItems] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [hl, setHl] = useState(0);
-  const dq = useDebounced(q.trim(), 180);
+  const dq = useDebounced(typed.trim(), 180);
   const input = useRef<HTMLInputElement>(null);
+  const noComplete = useRef(false); // after a delete, or while a phone keyboard is composing a word
+  const composing = useRef(false);
+  const selectFrom = useRef<number | null>(null);
 
   useEffect(() => {
     if (picked || dq.length < 2) {
@@ -30,11 +38,32 @@ export function GuessInput({ onPick, onSubmit, disabled }: { onPick: (s: Suggest
     return () => ctl.abort();
   }, [dq, picked]);
 
+  // Inline completion with the best suggestion, when its title starts with what was typed.
+  useEffect(() => {
+    const top = items[0];
+    if (!top || picked || noComplete.current || composing.current || document.activeElement !== input.current) return;
+    if (typed.length >= 2 && top.title.length > typed.length && top.title.toLowerCase().startsWith(typed.toLowerCase())) {
+      selectFrom.current = typed.length;
+      setShown(typed + top.title.slice(typed.length));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+
+  useLayoutEffect(() => {
+    if (selectFrom.current != null && input.current) {
+      input.current.setSelectionRange(selectFrom.current, shown.length);
+      selectFrom.current = null;
+    }
+  }, [shown]);
+
   const pick = (s: Suggestion) => {
     setPicked(s);
-    setQ(`${s.title} — ${s.artists}`);
+    const text = `${s.title} — ${s.artists}`;
+    setTyped(text);
+    setShown(text);
     setOpen(false);
     onPick(s);
+    input.current?.blur(); // closes the keyboard on phones
   };
 
   return (
@@ -51,23 +80,32 @@ export function GuessInput({ onPick, onSubmit, disabled }: { onPick: (s: Suggest
       )}
       <input
         ref={input}
-        value={q}
+        value={shown}
         disabled={disabled}
         dir="auto"
         autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        enterKeyHint="go"
         placeholder="Know it? Start typing the song…"
+        onCompositionStart={() => (composing.current = true)}
+        onCompositionEnd={() => (composing.current = false)}
         onChange={(e) => {
-          setQ(e.target.value);
+          const inputType = (e.nativeEvent as InputEvent).inputType ?? '';
+          noComplete.current = inputType.startsWith('delete');
+          setTyped(e.target.value);
+          setShown(e.target.value);
           if (picked) {
             setPicked(null);
             onPick(null);
           }
         }}
         onBlur={() => setTimeout(() => setOpen(false), 120)}
-        onFocus={() => items.length && setOpen(true)}
+        onFocus={() => items.length && !picked && setOpen(true)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && picked) {
             e.preventDefault();
+            input.current?.blur();
             onSubmit?.();
             return;
           }
@@ -78,10 +116,13 @@ export function GuessInput({ onPick, onSubmit, disabled }: { onPick: (s: Suggest
           } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             setHl((h) => (h - 1 + items.length) % items.length);
-          } else if (e.key === 'Enter') {
+          } else if (e.key === 'Enter' || (e.key === 'Tab' && shown !== typed)) {
             e.preventDefault();
             pick(items[hl]);
-          } else if (e.key === 'Escape') setOpen(false);
+          } else if (e.key === 'Escape') {
+            setShown(typed);
+            setOpen(false);
+          }
         }}
       />
     </div>

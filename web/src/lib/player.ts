@@ -51,6 +51,7 @@ class SongerPlayer {
   private stateWaiters = new Set<(s: SdkState) => void>();
   private primedUri: string | null = null;
   private primeLock: Promise<void> = Promise.resolve();
+  private preparing = false;
   private volume = 0.8;
   private clipTimer = 0;
   private clipSeq = 0;
@@ -201,33 +202,41 @@ class SongerPlayer {
     }
   }
 
-  /** Start the track silently on this device, then pause and rewind it to 0:00. Calls run one at a time. */
+  /** Ask Spotify to start `uri` at `fromMs` on this tab, retrying the usual transient failures. */
+  private async startOnDevice(uri: string, fromMs: number) {
+    let lastErr = '';
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const res = await this.webApi('PUT', `/me/player/play?device_id=${this.deviceId}`, { uris: [uri], position_ms: fromMs });
+      if (res.ok) return;
+      lastErr = `Spotify refused to start playback (${res.status}).`;
+      if (res.status === 404) await this.activateDevice(); // "Device not found": re-register this tab, then retry at once
+      else if (res.status === 429) await sleep(Math.min(Number(res.headers.get('retry-after') || 1), 5) * 1000);
+      else if (res.status >= 500) await sleep(400);
+      else break; // 401/403 and friends won't fix themselves
+    }
+    throw new Error(lastErr);
+  }
+
+  /**
+   * Computers: start the track at volume 0, pause, rewind, so every clip after that is an instant local resume.
+   * Phones can't change volume from a web page, so a "silent" warm-up would be heard (the double-play bug):
+   * there we skip it and playClip starts the song directly. Calls run one at a time.
+   */
   private prime(uri: string): Promise<void> {
     const run = this.primeLock.catch(() => {}).then(() => this.primeNow(uri));
     this.primeLock = run;
     return run;
   }
 
+  private readonly silentPrime = !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
   private async primeNow(uri: string) {
-    if (this.primedUri === uri) return;
+    if (this.primedUri === uri || !this.silentPrime) return;
     await this.init();
     const p = this.player!;
     await p.setVolume(0);
     try {
-      let lastErr = '';
-      for (let attempt = 0; attempt < 6; attempt++) {
-        const res = await this.webApi('PUT', `/me/player/play?device_id=${this.deviceId}`, { uris: [uri], position_ms: 0 });
-        if (res.ok) {
-          lastErr = '';
-          break;
-        }
-        lastErr = `Spotify refused to start playback (${res.status}).`;
-        if (res.status === 404) await this.activateDevice(); // "Device not found": re-register this tab, then retry at once
-        else if (res.status === 429) await sleep(Math.min(Number(res.headers.get('retry-after') || 1), 5) * 1000);
-        else if (res.status >= 500) await sleep(400);
-        else break; // 401/403 and friends won't fix themselves
-      }
-      if (lastErr) throw new Error(lastErr);
+      await this.startOnDevice(uri, 0);
       await this.waitForState((s) => SongerPlayer.isTrack(s, uri) && !s.paused, 6000);
       await p.pause();
       await p.seek(0);
@@ -238,10 +247,15 @@ class SongerPlayer {
     }
   }
 
-  /** Get the next song ready ahead of time (silent). */
+  /** Get the next song ready ahead of time (silent; computers only). */
   preload(uri: string) {
-    if (this.clip) return Promise.resolve(); // don't interrupt something audible
+    if (this.clip || this.preparing) return Promise.resolve(); // don't interrupt something audible
     return this.prime(uri).catch(() => {});
+  }
+
+  /** True while a song is being loaded before its clip starts (for a "Loading song…" hint). */
+  isPreparing() {
+    return this.preparing;
   }
 
   /** Play `lenMs` of a song starting at `fromMs` (0 = the very start). Resolves when the clip ends or is stopped. */
@@ -249,16 +263,37 @@ class SongerPlayer {
     const seq = ++this.clipSeq;
     window.clearTimeout(this.clipTimer);
     this.clip = null;
+    this.preparing = true;
     this.emit();
-    await this.prime(uri);
-    if (seq !== this.clipSeq) return;
+    let s: SdkState | null = null;
+    try {
+      await this.init();
+      const p = this.player!;
+      if (this.primedUri !== uri && !this.silentPrime) {
+        // Phone, new song: one direct start from the right spot (no audible warm-up).
+        await (this.primeLock = this.primeLock.catch(() => {}).then(() => this.startOnDevice(uri, fromMs)));
+        this.primedUri = uri;
+        s = await this.waitForState((st) => SongerPlayer.isTrack(st, uri) && !st.paused, 6000);
+      } else {
+        await this.prime(uri);
+        if (seq !== this.clipSeq) return;
+        await p.seek(fromMs);
+        await p.resume();
+        s = await this.waitForState((st) => SongerPlayer.isTrack(st, uri) && !st.paused, 2500);
+      }
+    } finally {
+      if (seq === this.clipSeq) {
+        this.preparing = false;
+        this.emit();
+      }
+    }
     const p = this.player!;
-    await p.seek(fromMs);
-    await p.resume();
-    const s = await this.waitForState((st) => SongerPlayer.isTrack(st, uri) && !st.paused, 2500);
-    if (seq !== this.clipSeq) return;
+    if (seq !== this.clipSeq) {
+      if (!this.preparing && !this.clip) await p.pause(); // stopped while starting: don't leave it playing
+      return;
+    }
     // Compensate for audio that already played before the state event reached us.
-    const playedMs = s ? Math.max(0, s.position - fromMs + (performance.timeOrigin + performance.now() - s.timestamp)) : 0;
+    const playedMs = s ? Math.min(lenMs, Math.max(0, s.position - fromMs + (performance.timeOrigin + performance.now() - s.timestamp))) : 0;
     const remaining = Math.max(0, lenMs - playedMs);
     this.clip = { startedAt: performance.now() - playedMs, lenMs, fromMs };
     this.emit();
@@ -275,11 +310,23 @@ class SongerPlayer {
     });
   }
 
+  /** Pause where we are (no rewind). Returns the position in ms, to resume with playClip(uri, rest, position). */
+  async pause(): Promise<number | null> {
+    const pos = this.position();
+    this.clipSeq++;
+    window.clearTimeout(this.clipTimer);
+    this.clip = null;
+    this.emit();
+    await this.player?.pause();
+    return pos;
+  }
+
   async stop() {
     this.clipSeq++;
     window.clearTimeout(this.clipTimer);
     const wasPlaying = !!this.clip;
     this.clip = null;
+    this.preparing = false;
     this.emit();
     if (wasPlaying && this.player) {
       await this.player.pause();

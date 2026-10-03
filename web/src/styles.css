@@ -129,6 +129,11 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .clip .sg { background: var(--card-2); border-radius: 5px; transition: background 0.2s; }
 .clip .sg.on { background: var(--pink); }
 .clip .sg.rest { background: color-mix(in srgb, var(--green) 55%, var(--card-2)); }
+.clip .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 5px; background: linear-gradient(90deg, #fff6, #fff2); mix-blend-mode: screen; pointer-events: none; }
+.clip-status { font-weight: 700; letter-spacing: 0.06em; }
+.clip-status.loading { color: var(--yellow); animation: blink 1s ease-in-out infinite; }
+.clip-status.playing { color: var(--pink); }
+@keyframes blink { 50% { opacity: 0.35; } }
 .clip .ph { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #fff; border-radius: 2px; left: 0; box-shadow: 0 0 8px #fff; pointer-events: none; }
 .clip-lbl { display: flex; justify-content: space-between; font: 500 11px var(--mono); color: var(--dim); }
 .playbtn { width: 78px; height: 78px; border-radius: 50%; background: var(--yellow); display: grid; place-items: center; margin: 2px auto; box-shadow: 0 8px 24px -8px var(--yellow); }
@@ -160,6 +165,13 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .sq i { width: 11px; height: 11px; border-radius: 3px; background: var(--card-2); }
 .sq i.m { background: var(--red); } .sq i.s { background: var(--dim); } .sq i.g { background: var(--green); }
 .big-score { font: 800 56px/1 var(--display); color: var(--yellow); text-align: center; }
+
+.cover { position: relative; padding: 0; border-radius: 18px; cursor: pointer; }
+.cover-icon { position: absolute; inset: 0; display: grid; place-items: center; font-size: 34px; color: #fff; background: #0007; border-radius: 18px; opacity: 1; transition: opacity 0.2s; text-shadow: 0 2px 10px #0008; }
+.cover-icon.is-playing { opacity: 0; }
+.cover:hover .cover-icon, .cover:focus-visible .cover-icon { opacity: 1; }
+.songbar { height: 4px; border-radius: 2px; background: var(--card-2); overflow: hidden; }
+.songbar div { height: 100%; width: 0; background: linear-gradient(90deg, var(--pink), var(--yellow)); }
 
 /* ---------- party: setup + TV ---------- */
 .setup { max-width: 760px; margin: 0 auto; display: grid; gap: 16px; }
@@ -219,5 +231,39 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .buzz { width: min(70vw, 300px); aspect-ratio: 1; border-radius: 50%; margin: auto; display: grid; place-items: center; font: 800 clamp(34px, 10vw, 52px) var(--display); color: #14112b; transition: transform 0.06s; touch-action: manipulation; user-select: none; }
 .buzz:active { transform: translateY(6px); }
 .buzz:disabled { filter: grayscale(1) brightness(0.5); cursor: not-allowed; }
+
+/* ---------- phones: one screen, never scroll the page ---------- */
+@media (max-width: 640px) {
+  .page.fit { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; padding-inline: 10px;
+    padding-block: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-bottom)); }
+  .page.fit .topbar { padding-block: 0 8px; }
+  .page.fit .topbar .pill { max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .page.fit > .solo, .page.fit > .phone { flex: 1; min-height: 0; max-width: none; width: 100%; margin: 0; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .page.fit > .solo { padding: 14px; border-radius: 20px; }
+  .page.fit > .phone { min-height: 0; overflow-y: auto; } /* last resort for very short screens */
+  .solo > * { flex-shrink: 0; }
+  .solo .h1 { font-size: 23px; }
+  /* the six tries share whatever height is left */
+  .solo .tries { flex: 1 1 0; min-height: 0; display: grid; grid-template-rows: repeat(6, minmax(0, 1fr)); gap: 4px; }
+  .solo .try { min-height: 0; max-height: 40px; padding: 2px 10px; font-size: 13px; }
+  .solo .playbtn { width: 58px; height: 58px; margin: 0 auto; }
+  .solo .playbtn::after { border-left-width: 17px; border-top-width: 10px; border-bottom-width: 10px; margin-left: 5px; }
+  .solo .playbtn.playing::after { width: 17px; height: 19px; background: linear-gradient(90deg, #14112b 0 6px, transparent 6px 11px, #14112b 11px); }
+  .solo .stagetxt { font-size: 11.5px; }
+  .solo .clip { height: 28px; }
+  /* picker: the result list scrolls inside, the page doesn't */
+  .solo .picker { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  .solo .picker > .stack.tight:last-child { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .solo .picker .optlist { flex: 1; min-height: 60px; max-height: none; }
+  .solo .sumlist { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+  .solo .big-score { font-size: 44px; }
+  /* reveal: the cover shrinks to fit */
+  .solo .reveal { gap: 6px; }
+  .solo .reveal .h1 { font-size: 21px; }
+  .solo { --cover: clamp(92px, 22dvh, 160px); }
+  .solo .cover, .solo .cover .art { width: var(--cover) !important; height: var(--cover) !important; }
+  .solo .songbar { width: var(--cover) !important; }
+  .solo .btn.lg { padding: 13px 18px; font-size: 16px; }
+}
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

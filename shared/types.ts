@@ -6,8 +6,6 @@ export const MAX_STAGE = STAGES_MS.length - 1;
 /** Party points for a correct song at each stage; naming only the artist earns ARTIST_POINTS. */
 export const PARTY_POINTS = [5, 4, 3, 2, 1, 1] as const;
 export const ARTIST_POINTS = 1;
-/** How long the reveal keeps playing for a sing-along. */
-export const REVEAL_MS = 20000;
 
 export interface Track {
   id: string;
@@ -115,7 +113,8 @@ export interface PartyState {
 export type PartyCue =
   | { kind: 'load'; uri: string }
   | { kind: 'clip'; uri: string; ms: number }
-  | { kind: 'reveal'; uri: string }
+  /** Play the whole song (ms = its length) for the sing-along. */
+  | { kind: 'reveal'; uri: string; ms: number }
   | { kind: 'stop' };
 
 export type HostAction =

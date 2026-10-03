@@ -2,12 +2,12 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import QRCode from 'qrcode';
 import confetti from 'canvas-confetti';
-import { MAX_STAGE, PARTY_POINTS, REVEAL_MS, STAGES_MS, type HostAction, type PartyCue, type PartyState, type Source } from '../../../shared/types';
+import { MAX_STAGE, PARTY_POINTS, STAGES_MS, type HostAction, type PartyCue, type PartyState, type Source } from '../../../shared/types';
 import { api, sourceLabel } from '../lib/api';
 import { player } from '../lib/player';
 import { getSocket, request } from '../lib/socket';
 import { useKeys, usePlayerStatus } from '../lib/hooks';
-import { Art, ClipBar, Eq } from '../components/bits';
+import { Art, ClipBar, CountPicker, Eq } from '../components/bits';
 import { SourcePicker } from '../components/SourcePicker';
 import { RemoteQrButton } from '../components/RemoteQr';
 import { usePartySounds } from '../lib/partySounds';
@@ -16,7 +16,6 @@ import { TopBar } from './Home';
 
 const COLORS = ['#3fd8ff', '#ff3d7f', '#ffd23f', '#4ade9b'];
 const DEFAULT_NAMES = ['Blue team', 'Pink team', 'Yellow team', 'Green team'];
-const COUNTS = [10, 15, 20];
 const SESSION_KEY = 'songer:party';
 
 export function PartyHost() {
@@ -38,7 +37,7 @@ export function PartyHost() {
     const onCue = (c: PartyCue) => {
       const fail = (e: Error) => setError(e.message);
       if (c.kind === 'clip') player.playClip(c.uri, c.ms).catch(fail);
-      else if (c.kind === 'reveal') player.playClip(c.uri, REVEAL_MS).catch(fail);
+      else if (c.kind === 'reveal') player.playClip(c.uri, c.ms).catch(fail);
       else if (c.kind === 'load') player.preload(c.uri);
       else player.stop();
     };
@@ -137,12 +136,7 @@ export function PartyHost() {
           <div className="panel">
             <span className="eyebrow">Music</span>
             <SourcePicker value={source} onChange={setSource} />
-            <div className="row wrap">
-              <span className="eyebrow">Songs</span>
-              {COUNTS.map((n) => (
-                <button key={n} className="chip" aria-pressed={count === n} onClick={() => setCount(n)}>{n}</button>
-              ))}
-            </div>
+            <CountPicker value={count} onChange={setCount} presets={[10, 15, 20]} />
           </div>
           <div className="panel">
             <span className="eyebrow">Teams</span>

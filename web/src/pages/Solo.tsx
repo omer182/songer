@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MAX_STAGE, REVEAL_MS, STAGES_MS, type Source, type Suggestion, type Track } from '../../../shared/types';
+import { MAX_STAGE, STAGES_MS, type Source, type Suggestion, type Track } from '../../../shared/types';
 import { isCorrect } from '../../../shared/match';
 import { api, sourceLabel } from '../lib/api';
 import { player } from '../lib/player';
 import { useKeys, usePlayerStatus } from '../lib/hooks';
-import { Art, ClipBar } from '../components/bits';
+import { Art, ClipBar, CountPicker, RevealCover } from '../components/bits';
 import { SourcePicker } from '../components/SourcePicker';
 import { GuessInput } from '../components/GuessInput';
 import { TopBar } from './Home';
@@ -18,7 +18,6 @@ interface SongResult {
   won: boolean;
 }
 
-const COUNTS = [5, 10, 15];
 const pointsFor = (tries: number) => 7 - tries; // solved on try 1 = 6 points … try 6 = 1 point
 
 export function Solo() {
@@ -33,6 +32,9 @@ export function Solo() {
   const [guess, setGuess] = useState<Suggestion | null>(null);
   const [results, setResults] = useState<SongResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [pausedAt, setPausedAt] = useState<number | null>(null);
+  const [waiting, setWaiting] = useState(false); // short pause before a new song's first clip
+  const startTimer = useRef(0);
   const saved = useRef(false);
   usePlayerStatus();
 
@@ -40,12 +42,24 @@ export function Solo() {
   const score = results.reduce((s, r) => s + (r.won ? pointsFor(r.tries.length) : 0), 0);
   const won = done && tries.at(-1)?.type === 'win';
 
-  const play = useCallback((t: Track, ms: number) => {
+  const play = useCallback((t: Track, ms: number, fromMs = 0) => {
     setError(null);
-    player.playClip(t.uri, ms).catch((e: Error) => setError(e.message));
+    setPausedAt(null);
+    player.playClip(t.uri, ms, fromMs).catch((e: Error) => setError(e.message));
   }, []);
 
-  useEffect(() => () => void player.stop(), []);
+  /** After the round the whole song plays; tapping the cover pauses and resumes it. */
+  const playFull = useCallback((t: Track, fromMs = 0) => play(t, Math.max(1000, t.durationMs - fromMs), fromMs), [play]);
+  const toggleReveal = () => {
+    if (!track) return;
+    if (player.isPlaying()) player.pause().then((pos) => setPausedAt(pos ?? 0));
+    else playFull(track, pausedAt ?? 0);
+  };
+
+  useEffect(() => () => {
+    window.clearTimeout(startTimer.current);
+    void player.stop();
+  }, []);
 
   async function start() {
     if (!source) return;
@@ -66,13 +80,20 @@ export function Solo() {
     }
   }
 
+  /** New song: show "Loading song…" for a moment (and let the player get ready), then play the first 0.5s. */
   function beginSong(list: Track[], idx: number) {
     setI(idx);
     setStage(0);
     setTries([]);
     setDone(false);
     setGuess(null);
-    play(list[idx], STAGES_MS[0]);
+    setWaiting(true);
+    window.clearTimeout(startTimer.current);
+    player.preload(list[idx].uri);
+    startTimer.current = window.setTimeout(() => {
+      setWaiting(false);
+      play(list[idx], STAGES_MS[0]);
+    }, 1500);
   }
 
   function advance(t: Try) {
@@ -83,7 +104,7 @@ export function Solo() {
     if (t.type === 'win' || stage >= MAX_STAGE) {
       setDone(true);
       setResults((r) => [...r, { track, tries: next, won: t.type === 'win' }]);
-      play(track, REVEAL_MS);
+      playFull(track);
     } else {
       const s = stage + 1;
       setStage(s);
@@ -117,7 +138,7 @@ export function Solo() {
 
   useKeys(
     {
-      Space: () => (phase === 'play' && track ? (player.isPlaying() ? player.stop() : play(track, done ? REVEAL_MS : STAGES_MS[stage])) : undefined),
+      Space: () => (phase === 'play' && track ? (done ? toggleReveal() : player.isPlaying() ? player.stop() : play(track, STAGES_MS[stage])) : undefined),
       Enter: () => (phase === 'play' && done ? nextSong() : undefined),
     },
     phase === 'play',
@@ -147,7 +168,7 @@ export function Solo() {
   );
 
   return (
-    <div className="page">
+    <div className="page fit">
       <TopBar />
       {phase === 'pick' || phase === 'loading' ? (
         <div className="solo">
@@ -157,14 +178,7 @@ export function Solo() {
           </div>
           <h1 className="h1">Pick the music</h1>
           <SourcePicker value={source} onChange={setSource} />
-          <div className="row wrap">
-            <span className="eyebrow">Songs</span>
-            {COUNTS.map((n) => (
-              <button key={n} className="chip" aria-pressed={count === n} onClick={() => setCount(n)}>
-                {n}
-              </button>
-            ))}
-          </div>
+          <CountPicker value={count} onChange={setCount} presets={[5, 10, 15]} />
           {error && <div className="err">{error}</div>}
           <button className="btn lg" disabled={!source || phase === 'loading'} onClick={start}>
             {phase === 'loading' ? <><span className="spin" /> Getting songs and the player ready…</> : `Play ${count} songs`}
@@ -184,7 +198,7 @@ export function Solo() {
           <p className="muted center" style={{ margin: 0 }}>
             {score >= results.length * 3.6 ? 'You really do know your music.' : score >= results.length * 1.8 ? 'Not bad. The intros got you a few times.' : 'Spotify thinks you listen to these. Spotify might be wrong.'}
           </p>
-          <div className="stack tight">
+          <div className="stack tight sumlist">
             {results.map((r) => (
               <div key={r.track.id} className="sumrow">
                 <Art src={r.track.image} size={36} radius={8} />
@@ -218,7 +232,7 @@ export function Solo() {
           {done ? (
             <>
               <div className="reveal">
-                <Art src={track.image} size={160} radius={18} />
+                <RevealCover src={track.image} durationMs={track.durationMs} pausedAt={pausedAt} onToggle={toggleReveal} />
                 <div>
                   <div className="h1" dir="auto" style={{ fontSize: 26 }}>{track.title}</div>
                   <div className="muted" dir="auto">
@@ -232,14 +246,14 @@ export function Solo() {
               <ClipBar stage={MAX_STAGE} revealed />
               {triesList}
               <div className="row">
-                <button className="btn ghost grow" onClick={() => play(track, REVEAL_MS)}>▶ Hear more</button>
+                <button className="btn ghost grow" onClick={() => playFull(track)}>⏮ From the start</button>
                 <button className="btn grow" onClick={nextSong}>{i + 1 < pool.length ? 'Next song' : 'See results'}</button>
               </div>
               <a className="small center" href={`https://open.spotify.com/track/${track.id}`} target="_blank" rel="noreferrer">Open in Spotify</a>
             </>
           ) : (
             <>
-              <ClipBar stage={stage} />
+              <ClipBar stage={stage} waiting={waiting} />
               <button
                 className={`playbtn ${player.isPlaying() ? 'playing' : ''}`}
                 aria-label={player.isPlaying() ? 'Stop' : 'Play clip'}
@@ -254,7 +268,7 @@ export function Solo() {
                 <button className="btn ghost grow" onClick={() => advance({ type: 'skip' })}>
                   {stage < MAX_STAGE ? `Skip (+${(STAGES_MS[stage + 1] - STAGES_MS[stage]) / 1000}s)` : 'Give up'}
                 </button>
-                <button className="btn grow" disabled={!guess} onClick={submit}>Guess</button>
+                <button className="btn grow" disabled={!guess} onClick={() => { (document.activeElement as HTMLElement | null)?.blur(); submit(); }}>Guess</button>
               </div>
             </>
           )}

@@ -118,7 +118,7 @@ export function attachParty(io: Server) {
   function reveal(r: Room, teamId: string | null, points: number, artistOnly = false) {
     Object.assign(r, { phase: 'reveal', buzz: null, toast: null, last: { teamId, points, artistOnly } });
     broadcast(r);
-    cue(r, { kind: 'reveal', uri: current(r).uri });
+    cue(r, { kind: 'reveal', uri: current(r).uri, ms: current(r).durationMs });
   }
 
   function hostAction(r: Room, a: HostAction) {

@@ -5,7 +5,7 @@ import { player } from './player';
 export function usePlayerStatus() {
   return useSyncExternalStore(
     (cb) => player.subscribe(cb),
-    () => `${player.status}|${player.error ?? ''}|${player.isPlaying()}`,
+    () => `${player.status}|${player.error ?? ''}|${player.isPlaying()}|${player.isPreparing()}`,
   );
 }
 

@@ -99,7 +99,7 @@ export function Join() {
   /* ----- no code yet: type it ----- */
   if (!code) {
     return (
-      <div className="page">
+      <div className="page fit">
         <div className="phone">
           <div className="mid" style={{ width: '100%' }}>
             <h1 className="h1">Join a party</h1>
@@ -114,13 +114,13 @@ export function Join() {
 
   if (ended) {
     return (
-      <div className="page"><div className="phone"><div className="mid"><h1 className="h1">The party ended</h1><p className="muted">Thanks for playing!</p></div></div></div>
+      <div className="page fit"><div className="phone"><div className="mid"><h1 className="h1">The party ended</h1><p className="muted">Thanks for playing!</p></div></div></div>
     );
   }
 
   if (!state) {
     return (
-      <div className="page"><div className="phone"><div className="mid">{error ? <div className="err">{error}</div> : <span className="spin" />}</div></div></div>
+      <div className="page fit"><div className="phone"><div className="mid">{error ? <div className="err">{error}</div> : <span className="spin" />}</div></div></div>
     );
   }
 
@@ -135,7 +135,7 @@ export function Join() {
   /* ----- pick name + team ----- */
   if (!me || !myTeam) {
     return (
-      <div className="page">
+      <div className="page fit">
         <div className="phone" style={{ textAlign: 'left' }}>
           <div className="hd"><Logo size="sm" link={false} /><span className="mono muted">{state.code}</span></div>
           <h1 className="h1">You're invited</h1>
@@ -229,7 +229,7 @@ export function Join() {
   }
 
   return (
-    <div className="page">
+    <div className="page fit">
       <div className="phone">
         <div className="hd">
           <span style={{ color: myTeam.color }}>{myTeam.name}</span>

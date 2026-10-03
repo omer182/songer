@@ -128,7 +128,7 @@ describe('party', () => {
     expect(rev.song?.title).toBe('Song 1'); // revealed to phones now
     expect(rev.teams.find((t) => t.id === 't1')!.score).toBe(4);
     expect(rev.last).toEqual({ teamId: 't1', points: 4, artistOnly: false });
-    expect(cues.at(-1)).toEqual({ kind: 'reveal', uri: 'spotify:track:t1' });
+    expect(cues.at(-1)).toEqual({ kind: 'reveal', uri: 'spotify:track:t1', ms: 200000 });
 
     // next song, nobody knows, skip → final
     host.emit('host:action', { code, action: { type: 'next' } });

@@ -36,7 +36,8 @@ export function Solo() {
   const [results, setResults] = useState<SongResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pausedAt, setPausedAt] = useState<number | null>(null);
-  const [waiting, setWaiting] = useState(false); // short pause before a new song's first clip
+  const [waiting, setWaiting] = useState(false);
+  const [skipped, setSkipped] = useState(false); // this song was skipped (reveal shows "Skipped") // short pause before a new song's first clip
   const startTimer = useRef(0);
   const saved = useRef(false);
   usePlayerStatus();
@@ -90,6 +91,7 @@ export function Solo() {
     setStage(0);
     setTries([]);
     setDone(false);
+    setSkipped(false);
     setGuess(null);
     setWaiting(true);
     window.clearTimeout(startTimer.current);
@@ -123,11 +125,15 @@ export function Solo() {
   }
 
   /** Skip this song entirely (bad intro, or you'd rather not): straight to the next one, no points. */
+  /** Skip this song: reveal it (and play it, like any reveal), no points, not counted in the maximum. */
   function skipSong() {
     if (!track) return;
     window.clearTimeout(startTimer.current);
+    setWaiting(false);
+    setSkipped(true);
+    setDone(true);
     setResults((r) => [...r, { track, tries, won: false, skipped: true }]);
-    nextSong();
+    playFull(track);
   }
 
   function nextSong() {
@@ -259,7 +265,9 @@ export function Solo() {
                     {track.year && ` · ${track.year}`}
                   </div>
                 </div>
-                <span className={`result ${won ? 'win' : 'lose'}`}>{won ? `Got it on try ${tries.length} · +${pointsFor(tries.length)}` : 'Missed it'}</span>
+                <span className={`result ${won ? 'win' : 'lose'}`} style={skipped ? { color: 'var(--muted)', background: 'var(--card)' } : undefined}>
+                  {won ? `Got it on try ${tries.length} · +${pointsFor(tries.length)}` : skipped ? 'Skipped' : 'Missed it'}
+                </span>
               </div>
               <ClipBar stage={MAX_STAGE} revealed />
               {triesList}

@@ -196,7 +196,8 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 
 const webDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web');
 if (fs.existsSync(path.join(webDir, 'index.html'))) {
-  app.use(express.static(webDir, { index: false, maxAge: '1h' }));
+  // redirect:false: /play is an app route, not the /play/assets folder, so don't 301 it to /play/.
+  app.use(express.static(webDir, { index: false, maxAge: '1h', redirect: false }));
   // Old /join links (printed QR codes) keep working.
   app.get(/^\/join(\/.*)?$/, (req, res) => res.redirect(301, req.path.replace(/^\/join/, '/play')));
   app.get('/remote', (_req, res) => res.redirect(301, '/play/host'));

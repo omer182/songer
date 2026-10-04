@@ -27,7 +27,7 @@ type Handler = (req: Request, res: Response) => Promise<unknown> | unknown;
 const route = (fn: Handler) => (req: Request, res: Response, next: NextFunction) => Promise.resolve(fn(req, res)).catch(next);
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, version: process.env.APP_VERSION?.slice(0, 7) || 'dev' });
 });
 
 app.get('/api/config', (_req, res) => {

@@ -241,10 +241,16 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .buzz:active { transform: translateY(6px); }
 .buzz:disabled { filter: grayscale(1) brightness(0.5); cursor: not-allowed; }
 
+/* ---------- build version (bottom-left) ---------- */
+.version-tag { position: fixed; left: max(8px, env(safe-area-inset-left)); bottom: max(4px, env(safe-area-inset-bottom)); z-index: 40;
+  font: 500 10px var(--mono); color: var(--dim); opacity: 0.7; text-decoration: none; letter-spacing: 0.02em; pointer-events: auto; }
+.version-tag:hover { opacity: 1; color: var(--muted); }
+.tvwrap:fullscreen ~ .version-tag { display: none; }
+
 /* ---------- phones: one screen, never scroll the page ---------- */
 @media (max-width: 640px) {
   .page.fit { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; padding-inline: 10px;
-    padding-block: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-bottom)); }
+    padding-block: max(8px, env(safe-area-inset-top)) max(18px, calc(env(safe-area-inset-bottom) + 14px)); }
   .page.fit .topbar { padding-block: 0 8px; }
   .page.fit .topbar .pill { max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .page.fit > .solo, .page.fit > .phone { flex: 1; min-height: 0; max-width: none; width: 100%; margin: 0; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }

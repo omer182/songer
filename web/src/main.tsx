@@ -9,6 +9,7 @@ import { Solo } from './pages/Solo';
 import { PartyHost } from './pages/PartyHost';
 import { Join } from './pages/Join';
 import { Remote } from './pages/Remote';
+import { VersionTag } from './components/VersionTag';
 import './styles.css';
 
 const MeContext = createContext<{ me: Me; signOut: () => void } | null>(null);
@@ -52,6 +53,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/remote" element={<Navigate to="/play/host" replace />} />
         <Route path="*" element={<Authed><Home /></Authed>} />
       </Routes>
+      <VersionTag />
     </BrowserRouter>
   </StrictMode>,
 );

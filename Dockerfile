@@ -1,6 +1,9 @@
 # One image: builds the web app and the API server, then serves both from Node on port 5100.
 FROM node:22-alpine AS build
 WORKDIR /app
+# Commit the image is built from (CI passes github.sha); shown in the app's corner and /api/health.
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
 COPY package*.json ./
 RUN npm ci
 COPY . .
@@ -8,7 +11,8 @@ RUN npm run build && npm prune --omit=dev
 
 FROM node:22-alpine
 WORKDIR /app
-ENV NODE_ENV=production PORT=5100 DATA_DIR=/data
+ARG APP_VERSION=dev
+ENV NODE_ENV=production PORT=5100 DATA_DIR=/data APP_VERSION=$APP_VERSION
 RUN apk add --no-cache su-exec
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules

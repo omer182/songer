@@ -137,6 +137,7 @@ export function Solo() {
   }
 
   function nextSong() {
+    player.activate(); // a click: lets the browser keep the audio unlocked
     player.stop();
     if (i + 1 < pool.length) beginSong(pool, i + 1);
     else setPhase('summary');

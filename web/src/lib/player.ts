@@ -55,6 +55,11 @@ class SongerPlayer {
   private preparing = false;
   private priming = false;
   private watchdog = 0;
+  private fallbackTimer = 0;
+  /** Last real playback position read from Spotify (ms in the song) and when we read it. */
+  private lastPos = { pos: 0, at: 0 };
+  /** How early to send "pause" so the clip ends on time; learned from how far Spotify overshoots. */
+  private stopLead = 60;
   private volume = 0.8;
   private clipTimer = 0;
   private clipSeq = 0;
@@ -178,6 +183,15 @@ class SongerPlayer {
     });
   }
 
+  /**
+   * Position right now: Spotify's state is a snapshot (position + when it was taken), so project it forward
+   * while playing. Ignored if the snapshot time looks wrong.
+   */
+  private static livePos(s: SdkState): number {
+    const age = Date.now() - s.timestamp;
+    return s.paused || !(age >= 0 && age < 5000) ? s.position : s.position + age;
+  }
+
   private static isTrack(s: SdkState, uri: string) {
     const t = s.track_window.current_track;
     return !!t && (t.uri === uri || t.linked_from?.uri === uri);
@@ -255,9 +269,18 @@ class SongerPlayer {
   private readonly silentPrime = !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
   /**
-   * Computers: start the track at volume 0, pause, rewind, so every clip after that is an instant local resume.
-   * Phones can't change volume from a web page, so a "silent" warm-up would be heard (the old double-play bug):
-   * there we skip it and playClip starts the song directly. Must run inside the queue.
+   * Resolves once the song is really playing: right track, not paused, and the position has moved past
+   * `fromMs` (a "playing" event alone can arrive while Spotify is still buffering). Null on timeout.
+   */
+  private waitAudible(uri: string, fromMs: number, timeoutMs: number, minAdvance = 25): Promise<SdkState | null> {
+    return this.waitForState((x) => SongerPlayer.isTrack(x, uri) && !x.paused && SongerPlayer.livePos(x) >= fromMs + minAdvance, timeoutMs);
+  }
+
+  /**
+   * Computers: start the track at volume 0 and let it actually play a little (so it's loaded and buffered),
+   * pause, rewind; every clip after that is an instant local resume. Phones can't change volume from a web
+   * page, so a "silent" warm-up would be heard (the old double-play bug): there playClip starts the song
+   * directly. Must run inside the queue.
    */
   private async primeNow(uri: string) {
     if (this.primedUri === uri || !this.silentPrime) return;
@@ -267,11 +290,12 @@ class SongerPlayer {
     await p.setVolume(0);
     try {
       await this.startOnDevice(uri, 0);
-      await this.waitForState((st) => SongerPlayer.isTrack(st, uri) && !st.paused, 6000);
+      const playing = await this.waitAudible(uri, 0, 6000, 200);
       await this.safePause();
       await p.seek(0);
-      await this.waitForState((st) => SongerPlayer.isTrack(st, uri) && st.paused, 1500);
-      this.primedUri = uri;
+      await this.waitForState((x) => SongerPlayer.isTrack(x, uri) && x.paused && x.position < 250, 1500);
+      // Only trust the warm-up if the song really played; otherwise playClip starts it the direct way.
+      this.primedUri = playing ? uri : null;
     } finally {
       await p.setVolume(this.volume);
       this.priming = false;
@@ -289,35 +313,47 @@ class SongerPlayer {
     return this.preparing;
   }
 
-  /** Play `lenMs` of a song starting at `fromMs` (0 = the very start). Resolves when the clip ends or is stopped. */
+  /**
+   * Play `lenMs` of a song starting at `fromMs` (0 = the very start). Resolves when the clip ends or is stopped.
+   * Timing follows Spotify's real playback position, not a timer: the clip counts from the moment the song is
+   * actually moving, and stops when the position reaches the end of the clip (minus the learned pause delay).
+   * If the song doesn't start, it's restarted automatically instead of staying silent.
+   */
   async playClip(uri: string, lenMs: number, fromMs = 0): Promise<void> {
     const seq = ++this.clipSeq;
-    window.clearTimeout(this.clipTimer);
+    this.clearTimers();
     this.clip = null;
     this.preparing = true;
     this.emit();
-    let started: SdkState | null | 'cancelled' = null;
+    let started: SdkState | 'cancelled';
     try {
       // Queued behind any pending stop/pause, so those finish before this song starts.
       started = await this.enqueue(async () => {
         if (seq !== this.clipSeq) return 'cancelled' as const;
         await this.init();
         const p = this.player!;
-        if (this.primedUri !== uri && !this.silentPrime) {
-          // Phone, new song: one direct start from the right spot (no audible warm-up).
-          await this.startOnDevice(uri, fromMs);
-          this.primedUri = uri;
-        } else {
-          await this.primeNow(uri);
-          if (seq !== this.clipSeq) return 'cancelled' as const;
+        if (this.primedUri !== uri) await this.primeNow(uri); // computers: silent warm-up
+        if (seq !== this.clipSeq) return 'cancelled' as const;
+        let st: SdkState | null = null;
+        if (this.primedUri === uri) {
+          await p.setVolume(this.volume);
           await p.seek(fromMs);
           await p.resume();
+          st = await this.waitAudible(uri, fromMs, 2000);
         }
-        const st = await this.waitForState((x) => SongerPlayer.isTrack(x, uri) && !x.paused, 6000);
-        // Cancelled while it was starting: silence it here, still inside the queue, before anything newer runs.
+        // Not warmed up (phones), or the resume didn't take: have Spotify start it right at fromMs. Twice if needed.
+        for (let attempt = 0; !st && attempt < 2 && seq === this.clipSeq; attempt++) {
+          await this.startOnDevice(uri, fromMs);
+          this.primedUri = uri;
+          st = await this.waitAudible(uri, fromMs, 4000);
+        }
         if (seq !== this.clipSeq) {
-          await this.safePause();
+          await this.safePause(); // cancelled while starting: silence it before anything newer runs
           return 'cancelled' as const;
+        }
+        if (!st) {
+          await this.safePause();
+          throw new Error("Spotify didn't start the song. Press play to try again.");
         }
         return st;
       });
@@ -328,31 +364,63 @@ class SongerPlayer {
       }
     }
     if (started === 'cancelled' || seq !== this.clipSeq) return;
-    // Compensate for audio that already played before the state event reached us.
-    const st = started;
-    const playedMs = st ? Math.min(lenMs, Math.max(0, st.position - fromMs + (performance.timeOrigin + performance.now() - st.timestamp))) : 0;
-    this.clip = { startedAt: performance.now() - playedMs, lenMs, fromMs };
+
+    this.lastPos = { pos: SongerPlayer.livePos(started), at: performance.now() };
+    this.clip = { startedAt: performance.now(), lenMs, fromMs };
     this.emit();
+    const target = fromMs + lenMs;
+    const p = this.player!;
     await new Promise<void>((resolve) => {
-      this.clipTimer = window.setTimeout(() => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        this.clearTimers();
         if (seq === this.clipSeq) {
           this.clip = null;
           this.emit();
           void this.enqueue(async () => {
             await this.safePause();
-            await this.player?.seek(0).catch(() => {});
+            // Learn how far past the end Spotify went, and pause that much earlier next time (short clips only).
+            if (lenMs <= 15000) {
+              const after = await p.getCurrentState().catch(() => null);
+              if (after && SongerPlayer.isTrack(after, uri)) {
+                const overshoot = after.position - target;
+                if (Math.abs(overshoot) < 600) this.stopLead = Math.min(250, Math.max(0, this.stopLead + overshoot * 0.4));
+              }
+            }
+            await p.seek(0).catch(() => {});
           });
         }
         resolve();
-      }, Math.max(0, lenMs - playedMs));
+      };
+      const tick = async () => {
+        if (done) return;
+        if (seq !== this.clipSeq) return finish();
+        const cur = await p.getCurrentState().catch(() => null);
+        if (cur && SongerPlayer.isTrack(cur, uri)) this.lastPos = { pos: SongerPlayer.livePos(cur), at: performance.now() };
+        const pos = this.position() ?? target;
+        const left = target - this.stopLead - pos;
+        if (left <= 0) return finish();
+        // Check often near the end, rarely during a long reveal.
+        this.clipTimer = window.setTimeout(tick, Math.min(1000, Math.max(20, left - 40)));
+      };
+      // Safety net in case position updates stop arriving.
+      this.fallbackTimer = window.setTimeout(finish, lenMs + 2000);
+      void tick();
     });
+  }
+
+  private clearTimers() {
+    window.clearTimeout(this.clipTimer);
+    window.clearTimeout(this.fallbackTimer);
   }
 
   /** Pause where we are (no rewind). Returns the position in ms, to resume with playClip(uri, rest, position). */
   async pause(): Promise<number | null> {
     const pos = this.position();
     this.clipSeq++;
-    window.clearTimeout(this.clipTimer);
+    this.clearTimers();
     this.clip = null;
     this.preparing = false;
     this.emit();
@@ -363,7 +431,7 @@ class SongerPlayer {
   /** Stop and rewind. Always pauses Spotify, even if a song was still starting. */
   async stop() {
     this.clipSeq++;
-    window.clearTimeout(this.clipTimer);
+    this.clearTimers();
     this.clip = null;
     this.preparing = false;
     this.emit();
@@ -376,7 +444,8 @@ class SongerPlayer {
   /** Position in ms inside the song while a clip plays, else null. */
   position(): number | null {
     if (!this.clip) return null;
-    return this.clip.fromMs + Math.min(this.clip.lenMs, performance.now() - this.clip.startedAt);
+    const est = this.lastPos.pos + (performance.now() - this.lastPos.at);
+    return Math.min(this.clip.fromMs + this.clip.lenMs, Math.max(this.clip.fromMs, est));
   }
 
   isPlaying() {
